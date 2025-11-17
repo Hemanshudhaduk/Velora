@@ -1,104 +1,262 @@
 // src/contexts/AuthContext.tsx
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getToken, getUser, setToken, setUser, TOKEN_KEY, USER_KEY } from "@/utils/localStore";
+import { getToken, getUser, setToken as storeToken, setUser as storeUser, clearAuth } from "@/utils/localStore";
 
-type User = { id: string; name: string; email: string };
+export type User = {
+  id: string;
+  username?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  email: string;
+  phone?: string | null;
+  profileImage?: string | null;
+  role?: string | null;
+};
 
+type SignUpPayload = {
+  username: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  password: string;
+};
+
+// src/contexts/AuthContext.tsx
 type AuthContextType = {
   user: User | null;
   token: string | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
-  signUp: (name: string, email: string, password: string) => Promise<void>;
-  signOut: () => void;
   isAuthenticated: boolean;
+  signIn: (email: string, password: string) => Promise<void>;
+  signUp: (payload: SignUpPayload) => Promise<any>;
+  signInWithGoogle: (credential: string) => Promise<void>; // Add this
+  signOut: () => void;
+  refreshProfile: () => Promise<void>;
+  fetchWithAuth: (path: string, options?: RequestInit, opts?: { useCookies?: boolean }) => Promise<any>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-/**
- * NOTE: This is a local/mock auth provider that stores a fake token & user
- * in localStorage. Replace signIn/signUp implementation with real API calls later.
- */
+const API_BASE =
+  (import.meta && (import.meta as any).env?.VITE_API_BASE_URL) ||
+  (process.env.REACT_APP_API_BASE_URL as string) ||
+  "http://localhost:5000";
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const navigate = useNavigate();
   const [token, setTokenState] = useState<string | null>(() => getToken());
-  const [user, setUserState] = useState<User | null>(() => getUser() as User | null);
-  const [loading, setLoading] = useState<boolean>(false);
+  const [user, setUserState] = useState<User | null>(() => {
+    const su = getUser();
+    return su ? (su as User) : null;
+  });
+  const [loading, setLoading] = useState<boolean>(true);
 
+  // fetch helper — supports cookie-based auth (useCookies: true) or bearer token header
+  const fetchWithAuth = async (path: string, options: RequestInit = {}, opts: { useCookies?: boolean } = {}) => {
+    const tokenNow = token || getToken();
+    const url = `${API_BASE}${path}`;
+    const headers: Record<string, string> = {};
+
+    // don't set content-type for FormData
+    if (!(options.body instanceof FormData)) headers["Content-Type"] = "application/json";
+
+    if (!opts.useCookies && tokenNow) {
+      headers["Authorization"] = `Bearer ${tokenNow}`;
+    }
+
+    const res = await fetch(url, {
+      credentials: opts.useCookies ? "include" : "same-origin",
+      ...options,
+      headers: {
+        ...(options.headers as Record<string, string> || {}),
+        ...headers,
+      },
+    });
+
+    const text = await res.text().catch(() => "");
+    let json: any = null;
+    try { json = text ? JSON.parse(text) : null; } catch { json = null; }
+
+    if (!res.ok) {
+      const message = (json && (json.message || json.error)) || res.statusText || "Request failed";
+      const error: any = new Error(message);
+      error.status = res.status;
+      error.payload = json;
+      throw error;
+    }
+    return json;
+  };
+
+  // Refresh profile — only sign out on 401/403 (invalid token)
+  const refreshProfile = async () => {
+    const tokenNow = getToken();
+    if (!tokenNow) return;
+    try {
+      // if you use httpOnly cookies on backend set useCookies:true here.
+      const res = await fetchWithAuth("/api/profile/me", { method: "GET" }, { useCookies: false });
+      if (res && res.success && res.data && res.data.user) {
+        setUserState(res.data.user as User);
+        storeUser(res.data.user);
+      } else {
+        // Unexpected but not necessarily auth failure — do not force sign out
+        console.warn("Unexpected profile response", res);
+      }
+    } catch (err: any) {
+      // If unauthorized -> clear auth. Otherwise keep user and show console
+      if (err?.status === 401 || err?.status === 403) {
+        signOut();
+      } else {
+        console.warn("Profile refresh error", err);
+      }
+    }
+  };
+
+  // initial hydrate + refresh profile
   useEffect(() => {
-    setTokenState(getToken());
-    setUserState(getUser() as User | null);
+    let mounted = true;
+    (async () => {
+      try {
+        setLoading(true);
+        const storedToken = getToken();
+        if (storedToken) {
+          setTokenState(storedToken);
+          await refreshProfile();
+        } else {
+          const storedUser = getUser();
+          if (storedUser && mounted) setUserState(storedUser as User);
+        }
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => { mounted = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Sign in — uses standard /api/auth/signin shape and saves token+user
   const signIn = async (email: string, password: string) => {
     setLoading(true);
     try {
-      // Mock verification: accept any non-empty password
-      if (!email || !password) throw new Error("Invalid credentials");
+      const res = await fetch(`${API_BASE}/api/auth/signin`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+        credentials: "same-origin",
+      });
+      const data = await res.json();
 
-      // Create a fake token and user
-      const fakeToken = btoa(`${email}:${Date.now()}`);
-      const fakeUser: User = { id: String(Date.now()), name: email.split("@")[0], email };
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || data.error || "Sign in failed");
+      }
 
-      setToken(fakeToken);
-      setUser(fakeUser);
-      setTokenState(fakeToken);
-      setUserState(fakeUser);
+      // Accept token in data.data.token or top-level data.token
+      const tokenFromServer = data?.data?.token ?? data?.token;
+      const userFromServer = data?.data?.user ?? data?.user;
+
+      if (!tokenFromServer || !userFromServer) {
+        // If backend uses httpOnly cookie, token may not be returned (it sets cookie instead).
+        // In that case, you should set tokenFromServer === null and still call refreshProfile with cookie credentials.
+        // For now if cookie-based flow is used, expect backend to set cookie and respond success + user.
+        if (data.success && data.data?.user && !tokenFromServer) {
+          // cookie-based: user returned, token handled via cookie by server
+          setUserState(data.data.user as User);
+          storeUser(data.data.user);
+          setTokenState(null);
+          storeToken(null);
+          return;
+        }
+        throw new Error("Invalid sign-in response from server");
+      }
+
+      setTokenState(tokenFromServer);
+      setUserState(userFromServer as User);
+      storeToken(tokenFromServer);
+      storeUser(userFromServer);
     } finally {
       setLoading(false);
     }
   };
 
-  const signUp = async (name: string, email: string, password: string) => {
+  // Sign up — returns server response (OTP flow). No auto-login.
+  const signUp = async (payload: SignUpPayload) => {
     setLoading(true);
     try {
-      // In mock, simply create account and auto-signin
-      if (!email || !password || !name) throw new Error("Missing fields");
-
-      const fakeToken = btoa(`${email}:${Date.now()}`);
-      const fakeUser: User = { id: String(Date.now()), name, email };
-
-      setToken(fakeToken);
-      setUser(fakeUser);
-      setTokenState(fakeToken);
-      setUserState(fakeUser);
+      const res = await fetch(`${API_BASE}/api/auth/signup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        credentials: "same-origin",
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || data.error || "Signup failed");
+      }
+      return data;
     } finally {
       setLoading(false);
     }
   };
 
+  const signInWithGoogle = async (credential: string) => {
+  setLoading(true);
+  try {
+    const res = await fetch(`${API_BASE}/api/auth/google`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ credential }),
+      credentials: "same-origin",
+    });
+    
+    const data = await res.json();
+
+    if (!res.ok || !data.success) {
+      throw new Error(data.message || "Google sign-in failed");
+    }
+
+    const tokenFromServer = data?.data?.token;
+    const userFromServer = data?.data?.user;
+
+    if (!tokenFromServer || !userFromServer) {
+      throw new Error("Invalid Google sign-in response");
+    }
+
+    setTokenState(tokenFromServer);
+    setUserState(userFromServer as User);
+    storeToken(tokenFromServer);
+    storeUser(userFromServer);
+  } finally {
+    setLoading(false);
+  }
+};
+
   const signOut = () => {
-    setToken(null);
-    setUser(null);
     setTokenState(null);
     setUserState(null);
-    // optional: navigate to home
+    clearAuth();
     navigate("/", { replace: true });
   };
-
-  useEffect(() => {
-    // persist token & user
-    setToken(token);
-    setUser(user);
-  }, [token, user]);
 
   const value: AuthContextType = {
     user,
     token,
     loading,
+    isAuthenticated: Boolean(token),
     signIn,
     signUp,
     signOut,
-    isAuthenticated: Boolean(token),
+    refreshProfile,
+    fetchWithAuth,
+    signInWithGoogle
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
+
 export const useAuth = () => {
-  const c = useContext(AuthContext);
-  if (!c) throw new Error("useAuth must be used inside AuthProvider");
-  return c;
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
+  return ctx;
 };

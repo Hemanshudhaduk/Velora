@@ -1,99 +1,167 @@
 // src/pages/SignIn.tsx
 import React, { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
+import { GoogleLogin, CredentialResponse } from '@react-oauth/google';
 import { useAuth } from "@/contexts/AuthContext";
 import Logo from "@/assets/logo-gold.svg";
 
 export default function SignIn() {
-  const { signIn } = useAuth();
+  const { signIn, signInWithGoogle } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const from = (location.state as any)?.from?.pathname ?? "/";
+
+  const from = (location.state as any)?.from?.pathname || "/";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [show, setShow] = useState(false);
+  const [error, setError] = useState("");
 
   const validate = () => {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setError("Please enter a valid email address");
+      setError("Enter a valid email");
       return false;
     }
     if (password.length < 6) {
-      setError("Password must be at least 6 characters");
+      setError("Password must be 6+ characters");
       return false;
     }
-    setError(null);
     return true;
   };
 
-  const submit = async (e: React.FormEvent) => {
+  const submit = async (e: any) => {
     e.preventDefault();
     if (!validate()) return;
+
     setBusy(true);
+    setError("");
     try {
-      await signIn(email.trim(), password);
+      await signIn(email, password);
       navigate(from, { replace: true });
     } catch (err: any) {
-      setError(err?.message ?? "Sign in failed");
+      setError(err.message || "Sign-in failed");
     } finally {
       setBusy(false);
     }
   };
 
+  // Handle Google Login Success
+  const handleGoogleSuccess = async (credentialResponse: CredentialResponse) => {
+    if (!credentialResponse.credential) {
+      setError("Google sign-in failed. Please try again.");
+      return;
+    }
+
+    setBusy(true);
+    setError("");
+    try {
+      await signInWithGoogle(credentialResponse.credential);
+      navigate(from, { replace: true });
+    } catch (err: any) {
+      setError(err.message || "Google sign-in failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Handle Google Login Error
+  const handleGoogleError = () => {
+    setError("Google sign-in was cancelled or failed");
+  };
+
   return (
     <div className="min-h-screen bg-white flex items-center justify-center px-4 py-12">
-      <div className="max-w-4xl w-full grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-        {/* Visual */}
-        <div className="hidden md:flex flex-col items-center justify-center p-8 rounded-xl bg-amber-50 border border-amber-100 shadow-lg">
-          <img src={Logo} alt="Velora" className="w-56 h-56 mb-4" />
-          <h2 className="text-2xl font-semibold text-amber-700">Velora</h2>
-          <p className="text-center text-gray-600 mt-2">White & Gold collection — sign in to continue shopping premium styles.</p>
+      <div className="max-w-md w-full bg-white border border-gray-200 p-8 rounded-xl shadow-lg">
+        <div className="text-center mb-6">
+          <img src={Logo} className="w-28 mx-auto" alt="Velora Logo" />
+          <h2 className="text-xl font-semibold mt-2">Welcome Back</h2>
+          <p className="text-gray-500 text-sm">
+            Sign in to continue shopping with Velora
+          </p>
         </div>
 
-        {/* Form */}
-        <div className="bg-white p-8 rounded-xl shadow-lg border border-gray-100">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xl font-semibold">Sign in to Velora</h3>
-            <div className="text-sm text-gray-500">New here? <button onClick={() => navigate("/signup")} className="text-amber-600 ml-2">Create account</button></div>
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md mb-4 text-sm">
+            {error}
+          </div>
+        )}
+
+        {/* Google Sign In Button */}
+        <div className="mb-6">
+          <GoogleLogin
+            onSuccess={handleGoogleSuccess}
+            onError={handleGoogleError}
+            useOneTap
+            text="signin_with"
+            width="100%"
+          />
+        </div>
+
+        {/* Divider */}
+        <div className="relative mb-6">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-300"></div>
+          </div>
+          <div className="relative flex justify-center text-sm">
+            <span className="px-2 bg-white text-gray-500">Or continue with email</span>
+          </div>
+        </div>
+
+        {/* Email/Password Form */}
+        <form onSubmit={submit} className="space-y-4">
+          <div>
+            <label className="text-sm font-medium">Email</label>
+            <input
+              type="email"
+              value={email}
+              className="w-full border px-3 py-2 rounded-md mt-1 focus:outline-none focus:ring-2 focus:ring-amber-500"
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={busy}
+            />
           </div>
 
-          <form onSubmit={submit} className="space-y-4">
-            {error && <div className="text-sm text-red-600">{error}</div>}
-
-            <div>
-              <label className="text-sm font-medium">Email</label>
-              <input required value={email} onChange={(e) => setEmail(e.target.value)} type="email" className="w-full mt-1 border px-3 py-2 rounded-md focus:ring-2 focus:ring-amber-100" />
-            </div>
-
-            <div>
-              <label className="text-sm font-medium">Password</label>
-              <div className="relative mt-1">
-                <input required value={password} onChange={(e) => setPassword(e.target.value)} type={show ? "text" : "password"} className="w-full border px-3 py-2 rounded-md focus:ring-2 focus:ring-amber-100" />
-                <button type="button" onClick={() => setShow((s) => !s)} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500">
-                  {show ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between text-sm">
-              <label className="flex items-center gap-2">
-                <input type="checkbox" className="mt-1" />
-                <span>Remember me</span>
-              </label>
-              <button type="button" className="text-amber-600">Forgot?</button>
-            </div>
-
-            <div>
-              <button disabled={busy} className="w-full py-2 rounded-md bg-amber-500 text-white font-medium hover:opacity-95">
-                {busy ? "Signing in..." : "Sign in"}
+          <div>
+            <label className="text-sm font-medium">Password</label>
+            <div className="relative">
+              <input
+                type={show ? "text" : "password"}
+                value={password}
+                className="w-full border px-3 py-2 rounded-md mt-1 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={busy}
+              />
+              <button
+                type="button"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                onClick={() => setShow(!show)}
+                disabled={busy}
+              >
+                {show ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
-          </form>
-        </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={busy}
+            className="w-full bg-amber-500 hover:bg-amber-600 text-white py-2 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {busy ? "Signing in..." : "Sign In"}
+          </button>
+        </form>
+
+        <p className="mt-4 text-center text-sm text-gray-600">
+          New user?{" "}
+          <button
+            className="text-amber-600 hover:require is not defined-amber-700 font-medium"
+            onClick={() => navigate("/signup")}
+            disabled={busy}
+          >
+            Create account
+          </button>
+        </p>
       </div>
     </div>
   );

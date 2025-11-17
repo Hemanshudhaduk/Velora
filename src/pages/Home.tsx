@@ -4,25 +4,49 @@ import { Button } from "@/components/ui/button";
 import ProductCard from "@/components/ProductCard";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import heroImage from "@/assets/hero-image.jpg";
-import categoryWomen from "@/assets/category-women.jpg";
-import categoryMen from "@/assets/category-men.jpg";
-import categoryOuterwear from "@/assets/category-outerwear.jpg";
-import sustainabilityImage from "@/assets/sustainability-image.jpg";
 import { products } from "@/data/products";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 const Home = () => {
-  const categories = [
-    { id: 1, name: "Womenswear", img: categoryWomen, link: "/women" },
-    { id: 2, name: "Menswear", img: categoryMen, link: "/men" },
-    { id: 3, name: "Outerwear", img: categoryOuterwear, link: "/women" },
-    { id: 4, name: "Ethnic Wear", img: categoryOuterwear, link: "/women" },
-  ];
+  const [categories, setCategories] = useState([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+
+  const API_BASE =
+  (import.meta && (import.meta as any).env?.VITE_API_BASE_URL) ||
+  (process.env.REACT_APP_API_BASE_URL as string) ||
+  "http://localhost:5000";
+
+  // Fetch categories from API
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch(`${API_BASE}/api/category/list?active=true`);
+        const data = await response.json();
+        
+        if (data.success && data.data.categories) {
+          const formattedCategories = data.data.categories.map(cat => ({
+            id: cat.id,
+            name: cat.categoryName,
+            img: cat.mainImage,
+            link: `/${cat.categoryName.toLowerCase().replace(/\s+/g, '-')}`,
+            description: cat.description
+          }));
+          setCategories(formattedCategories);
+        }
+      } catch (error) {
+        console.error('Error fetching categories:', error);
+        // Fallback to empty array if API fails
+        setCategories([]);
+      } finally {
+        setCategoriesLoading(false);
+      }
+    };
+
+    fetchCategories();
+  }, []);
 
   const newArrivals = products.slice(0, 8);
   const gifUrl = "https://assets.vogue.com/photos/65ca3f98b3fbcf4bbe874018/master/w_960,c_limit/Designer_collage_final.gif";
-
 
   // Refs for horizontal scroll containers
   const catScrollRef = useRef(null);
@@ -127,10 +151,10 @@ const Home = () => {
   };
 
   const HERO_IMAGES = [
-    "./public/imags/Main_image_1.jpg",
-    "./public/imags/Main_image_2.jpg",
-    "./public/imags/Main_image_3.jpg",
-    "./public/imags/Main_image_4.jpg",
+    "./imags/Main_image_1.jpg",
+    "./imags/Main_image_2.jpg",
+    "./imags/Main_image_3.jpg",
+    "./imags/Main_image_4.jpg",
   ];
 
   return (
@@ -296,55 +320,67 @@ const Home = () => {
           Shop by Category
         </h2>
 
-        {/* Arrow buttons - render only when showCatArrows === true */}
-        {showCatArrows && (
-          <div className="absolute inset-y-0 flex items-center justify-between px-2 pointer-events-none">
-            <button
-              onClick={() => scrollLeft(catScrollRef, getCatScrollDistance())}
-              className="hidden md:flex pointer-events-auto bg-white/80 hover:bg-white text-gray-700 rounded-full p-2 shadow"
-              aria-label="Scroll categories left"
-            >
-              <ChevronLeft size={28} />
-            </button>
-            <button
-              onClick={() => scrollRight(catScrollRef, getCatScrollDistance())}
-              className="hidden md:flex pointer-events-auto bg-white/80 hover:bg-white text-gray-700 rounded-full p-2 shadow"
-              aria-label="Scroll categories right"
-            >
-              <ChevronRight size={28} />
-            </button>
+        {categoriesLoading ? (
+          <div className="flex justify-center items-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
           </div>
-        )}
+        ) : categories.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-gray-500">No categories available at the moment.</p>
+          </div>
+        ) : (
+          <>
+            {/* Arrow buttons - render only when showCatArrows === true */}
+            {showCatArrows && (
+              <div className="absolute inset-y-0 flex items-center justify-between px-2 pointer-events-none">
+                <button
+                  onClick={() => scrollLeft(catScrollRef, getCatScrollDistance())}
+                  className="hidden md:flex pointer-events-auto bg-white/80 hover:bg-white text-gray-700 rounded-full p-2 shadow"
+                  aria-label="Scroll categories left"
+                >
+                  <ChevronLeft size={28} />
+                </button>
+                <button
+                  onClick={() => scrollRight(catScrollRef, getCatScrollDistance())}
+                  className="hidden md:flex pointer-events-auto bg-white/80 hover:bg-white text-gray-700 rounded-full p-2 shadow"
+                  aria-label="Scroll categories right"
+                >
+                  <ChevronRight size={28} />
+                </button>
+              </div>
+            )}
 
-        {/* Scroll container (desktop + mobile) */}
-        {/* catWrapRef measures the visible area */}
-        <div ref={catWrapRef} className="w-full">
-          <div
-            ref={catScrollRef}
-            className="flex gap-6 overflow-x-auto scroll-smooth pb-4 no-scrollbar"
-          >
-            {categories.map((cat) => (
-              <Link
-                key={cat.id}
-                to={cat.link}
-                className="flex-shrink-0 w-[250px] sm:w-[300px] group"
-                data-cat-item
+            {/* Scroll container (desktop + mobile) */}
+            {/* catWrapRef measures the visible area */}
+            <div ref={catWrapRef} className="w-full">
+              <div
+                ref={catScrollRef}
+                className="flex gap-6 overflow-x-auto scroll-smooth pb-4 no-scrollbar"
               >
-                <div className="aspect-[5/6] overflow-hidden rounded-xl border border-border shadow-sm transition-transform duration-500 group-hover:scale-105 group-hover:border-primary">
-                  <img
-                    src={cat.img}
-                    alt={cat.name}
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                  />
-                </div>
-                <h3 className="text-lg md:text-xl font-medium text-center mt-4 group-hover:text-primary transition">
-                  {cat.name}
-                </h3>
-              </Link>
-            ))}
-          </div>
-        </div>
+                {categories.map((cat) => (
+                  <Link
+                    key={cat.id}
+                    to={cat.link}
+                    className="flex-shrink-0 w-[250px] sm:w-[300px] group"
+                    data-cat-item
+                  >
+                    <div className="aspect-[5/6] overflow-hidden rounded-xl border border-border shadow-sm transition-transform duration-500 group-hover:scale-105 group-hover:border-primary">
+                      <img
+                        src={cat.img}
+                        alt={cat.name}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                      />
+                    </div>
+                    <h3 className="text-lg md:text-xl font-medium text-center mt-4 group-hover:text-primary transition">
+                      {cat.name}
+                    </h3>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
       </section>
 
       {/* ---------------- NEW ARRIVALS SECTION ---------------- */}
