@@ -5,7 +5,6 @@ import {
   EyeOff,
   Trash2,
   Edit2,
-  MapPin,
   Save,
   Mail,
   Lock,
@@ -17,7 +16,6 @@ import {
   Plus,
   Home,
   Building2,
-  Navigation,
   Search,
   ArrowLeft,
 } from "lucide-react";
@@ -56,12 +54,15 @@ type Address = {
   isDefault?: boolean;
 };
 
-const API_BASE = (import.meta as any)?.env?.VITE_API_BASE_URL || "http://localhost:5000";
+const API_BASE =
+  (import.meta as any)?.env?.VITE_API_BASE_URL || "http://localhost:5000";
 const API = (path: string) => `${API_BASE}${path}`;
 
 const authFetch = async (url: string, opts: RequestInit = {}) => {
   const token = localStorage.getItem("velora_token");
-  const headers: Record<string, string> = { ...((opts.headers as Record<string, string>) || {}) };
+  const headers: Record<string, string> = {
+    ...((opts.headers as Record<string, string>) || {}),
+  };
 
   if (!(opts.body instanceof FormData) && !headers["Content-Type"]) {
     headers["Content-Type"] = "application/json";
@@ -98,16 +99,11 @@ function resolveImageUrl(img?: string | null) {
 
   if (/^https?:\/\//i.test(trimmed)) {
     const urlMatch = trimmed.match(/\/uploads\/.+$/);
-    if (urlMatch) {
-      return `${API_BASE}${urlMatch[0]}`;
-    }
+    if (urlMatch) return `${API_BASE}${urlMatch[0]}`;
     return trimmed;
   }
 
-  if (trimmed.startsWith("/")) {
-    return `${API_BASE}${trimmed}`;
-  }
-
+  if (trimmed.startsWith("/")) return `${API_BASE}${trimmed}`;
   return `${API_BASE}/uploads/${trimmed}`;
 }
 
@@ -137,7 +133,9 @@ export default function ProfilePage(): JSX.Element {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"profile" | "security" | "addresses">("profile");
+  const [activeTab, setActiveTab] = useState<
+    "profile" | "security" | "addresses"
+  >("profile");
 
   const [form, setForm] = useState({
     username: "",
@@ -171,10 +169,7 @@ export default function ProfilePage(): JSX.Element {
     country: "India",
   });
 
-  // Map / pincode picker states
-  const [showMapPicker, setShowMapPicker] = useState(false);
-  const [mapLocation, setMapLocation] = useState({ lat: 21.1702, lng: 72.8311 });
-  const [searchQuery, setSearchQuery] = useState("");
+  // Pincode lookup states
   const [pincodeSearch, setPincodeSearch] = useState("");
   const [pincodeResults, setPincodeResults] = useState<any[] | null>(null);
   const [pincodeLoading, setPincodeLoading] = useState(false);
@@ -201,7 +196,8 @@ export default function ProfilePage(): JSX.Element {
       const resolved = resolveImageUrl(u.profileImage);
       if (resolved) return resolved;
     }
-    const nameSource = u.username || `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim() || "U";
+    const nameSource =
+      u.username || `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim() || "U";
     const initial = (nameSource.charAt(0) || "U").toUpperCase();
     const svg = encodeURIComponent(
       `<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><rect fill='#FDF6ED' width='100%' height='100%'/><text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' font-family='Inter, Arial' font-size='90' fill='#B87333'>${initial}</text></svg>`
@@ -278,13 +274,21 @@ export default function ProfilePage(): JSX.Element {
     }
     if (!file) {
       const currentImage = resolveImageUrl(user?.profileImage ?? "");
-      setForm((f) => ({ ...f, profileImageFile: null, profileImagePreview: currentImage ?? "" }));
+      setForm((f) => ({
+        ...f,
+        profileImageFile: null,
+        profileImagePreview: currentImage ?? "",
+      }));
       if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
     const url = URL.createObjectURL(file);
     lastPreviewUrlRef.current = url;
-    setForm((f) => ({ ...f, profileImageFile: file, profileImagePreview: url }));
+    setForm((f) => ({
+      ...f,
+      profileImageFile: file,
+      profileImagePreview: url,
+    }));
   };
 
   const handleSaveProfile = async () => {
@@ -310,7 +314,8 @@ export default function ProfilePage(): JSX.Element {
       fd.append("firstName", form.firstName);
       fd.append("lastName", form.lastName);
       if (form.phone) fd.append("phone", form.phone);
-      if (form.profileImageFile) fd.append("profileImage", form.profileImageFile);
+      if (form.profileImageFile)
+        fd.append("profileImage", form.profileImageFile);
 
       const token = localStorage.getItem("velora_token");
       const res = await fetch(API("/api/profile/update"), {
@@ -327,12 +332,19 @@ export default function ProfilePage(): JSX.Element {
       if (json?.data?.user) setUser(json.data.user);
 
       try {
-        const refreshed = await authFetch(API("/api/profile/me"), { method: "GET" });
-        const refreshedUser: any = refreshed?.data?.user ?? refreshed?.user ?? null;
+        const refreshed = await authFetch(API("/api/profile/me"), {
+          method: "GET",
+        });
+        const refreshedUser: any =
+          refreshed?.data?.user ?? refreshed?.user ?? null;
         if (refreshedUser) {
           setUser(refreshedUser as User);
           const resolvedImage = resolveImageUrl(refreshedUser.profileImage);
-          setForm((f) => ({ ...f, profileImageFile: null, profileImagePreview: resolvedImage ?? f.profileImagePreview }));
+          setForm((f) => ({
+            ...f,
+            profileImageFile: null,
+            profileImagePreview: resolvedImage ?? f.profileImagePreview,
+          }));
         }
       } catch {}
 
@@ -376,9 +388,8 @@ export default function ProfilePage(): JSX.Element {
         setSecurityForm({ currentPassword: "", newPassword: "", newEmail: "" });
       }
 
-      if (!json?.data?.emailChangeRequested) {
+      if (!json?.data?.emailChangeRequested)
         alert("Security settings updated!");
-      }
     } catch (err: any) {
       console.error(err);
       setError(err?.message || "Update failed");
@@ -398,7 +409,10 @@ export default function ProfilePage(): JSX.Element {
         method: "POST",
         body: JSON.stringify({ otp: otpCode }),
       });
-      setUser((u) => ({ ...(u as User), email: json?.data?.user?.email ?? (u as User).email }));
+      setUser((u) => ({
+        ...(u as User),
+        email: json?.data?.user?.email ?? (u as User).email,
+      }));
       setOtpMessage(json.message || "Email changed");
       setOtpModalOpen(false);
       setOtpCode("");
@@ -413,6 +427,9 @@ export default function ProfilePage(): JSX.Element {
   const openAddAddress = () => {
     setEditingAddr(null);
     setAddrForm({ address_type: "shipping", country: "India" });
+    setPincodeResults(null);
+    setSelectedPOIndex(null);
+    setPincodeSearch("");
     setAddrModalOpen(true);
   };
 
@@ -429,11 +446,22 @@ export default function ProfilePage(): JSX.Element {
       pincode: a.pincode,
       country: a.country,
     });
+    setPincodeResults(null);
+    setSelectedPOIndex(null);
+    setPincodeSearch(a.pincode || "");
     setAddrModalOpen(true);
   };
 
   const saveAddress = async () => {
-    const required = ["full_name", "phone", "address_line1", "city", "state", "pincode", "country"];
+    const required = [
+      "full_name",
+      "phone",
+      "address_line1",
+      "city",
+      "state",
+      "pincode",
+      "country",
+    ];
     for (const k of required)
       if (!(addrForm as any)[k]) {
         setError("Please fill all address fields");
@@ -466,7 +494,6 @@ export default function ProfilePage(): JSX.Element {
         });
       }
       setAddrModalOpen(false);
-      setShowMapPicker(false);
       await loadAddresses();
     } catch (err: any) {
       setError(err?.message || "Address save failed");
@@ -487,65 +514,16 @@ export default function ProfilePage(): JSX.Element {
   const setDefaultAddr = async (id: string | undefined) => {
     if (!id) return;
     try {
-      await authFetch(API(`/api/address/${id}/set-default`), { method: "PATCH" });
+      await authFetch(API(`/api/address/${id}/set-default`), {
+        method: "PATCH",
+      });
       await loadAddresses();
     } catch (err: any) {
       setError(err?.message || "Set default failed");
     }
   };
 
-  const handleUseCurrentLocation = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
-          setMapLocation({ lat: latitude, lng: longitude });
-          reverseGeocode(latitude, longitude);
-        },
-        () => {
-          alert("Unable to get your location. Please enter manually.");
-        }
-      );
-    } else {
-      alert("Geolocation not supported in this browser.");
-    }
-  };
-
-  const reverseGeocode = async (lat: number, lng: number) => {
-    try {
-      const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
-      const data = await response.json();
-      if (data?.address) {
-        setAddrForm((f) => ({
-          ...f,
-          address_line1: data.address.road || data.display_name?.split(",")[0] || f.address_line1,
-          city: data.address.city || data.address.town || data.address.village || f.city,
-          state: data.address.state || f.state,
-          pincode: data.address.postcode || f.pincode,
-          country: data.address.country || f.country || "India",
-        }));
-      }
-    } catch (error) {
-      console.error("Geocoding error:", error);
-    }
-  };
-
-  const searchLocation = async () => {
-    if (!searchQuery.trim()) return;
-    try {
-      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}`);
-      const data = await response.json();
-      if (data && data[0]) {
-        const { lat, lon } = data[0];
-        setMapLocation({ lat: parseFloat(lat), lng: parseFloat(lon) });
-        reverseGeocode(parseFloat(lat), parseFloat(lon));
-      }
-    } catch (error) {
-      console.error("Search error:", error);
-    }
-  };
-
-  // Pincode lookup (India - PostOffice API)
+  // Pincode lookup (India)
   const lookupPincode = async (pin?: string) => {
     const p = (pin ?? pincodeSearch ?? "").trim();
     if (!p || p.length < 4) {
@@ -559,14 +537,20 @@ export default function ProfilePage(): JSX.Element {
     setSelectedPOIndex(null);
 
     try {
-      const res = await fetch(`https://api.postalpincode.in/pincode/${encodeURIComponent(p)}`);
+      const res = await fetch(
+        `https://api.postalpincode.in/pincode/${encodeURIComponent(p)}`
+      );
       const json = await res.json();
       if (!Array.isArray(json) || json.length === 0) {
         setPincodeError("No results");
         setPincodeResults(null);
       } else {
         const entry = json[0];
-        if (entry.Status !== "Success" || !Array.isArray(entry.PostOffice) || entry.PostOffice.length === 0) {
+        if (
+          entry.Status !== "Success" ||
+          !Array.isArray(entry.PostOffice) ||
+          entry.PostOffice.length === 0
+        ) {
           setPincodeError("No areas found for this pincode");
           setPincodeResults(null);
         } else {
@@ -585,7 +569,12 @@ export default function ProfilePage(): JSX.Element {
 
   const applySelectedPostOffice = (idx?: number) => {
     const i = idx ?? selectedPOIndex;
-    if (i == null || !pincodeResults || !Array.isArray(pincodeResults) || !pincodeResults[i]) {
+    if (
+      i == null ||
+      !pincodeResults ||
+      !Array.isArray(pincodeResults) ||
+      !pincodeResults[i]
+    ) {
       setError("Select an area first");
       return;
     }
@@ -596,17 +585,18 @@ export default function ProfilePage(): JSX.Element {
       city: po.District || f.city || "",
       state: po.State || f.state || "",
       country: po.Country || f.country || "India",
-      address_line2: [po.Name, po.Block, po.Division].filter(Boolean).join(", ") || f.address_line2,
+      address_line2:
+        [po.Name, po.Block, po.Division].filter(Boolean).join(", ") ||
+        f.address_line2,
     }));
-    setShowMapPicker(false);
+
+    // Clean up pincode UI after apply
     setPincodeResults(null);
     setSelectedPOIndex(null);
     setPincodeSearch("");
   };
 
-  const goToHome = () => {
-    window.location.href = "/";
-  };
+  const goToHome = () => (window.location.href = "/");
 
   if (loading) {
     return (
@@ -651,9 +641,9 @@ export default function ProfilePage(): JSX.Element {
                   src={avatarSrc || ""}
                   alt="avatar"
                   className="w-full h-full object-cover"
-                  onError={(e) => {
-                    e.currentTarget.src = avatarFrom(user) || "";
-                  }}
+                  onError={(e) =>
+                    (e.currentTarget.src = avatarFrom(user) || "")
+                  }
                 />
               </div>
               <button
@@ -662,15 +652,27 @@ export default function ProfilePage(): JSX.Element {
               >
                 <Camera size={18} className="md:w-5 md:h-5" />
               </button>
-              <input ref={fileInputRef} type="file" accept="image/*" onChange={(e) => onSelectProfileImage(e.target.files?.[0] ?? null)} className="hidden" />
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={(e) =>
+                  onSelectProfileImage(e.target.files?.[0] ?? null)
+                }
+                className="hidden"
+              />
             </div>
 
             <div className="flex-1 text-center md:text-left">
               <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
                 {user.firstName} {user.lastName}
               </h1>
-              <p className="text-amber-600 font-medium mt-1">@{user.username ?? "user"}</p>
-              <p className="text-gray-500 text-sm mt-2 break-all">{user.email}</p>
+              <p className="text-amber-600 font-medium mt-1">
+                @{user.username ?? "user"}
+              </p>
+              <p className="text-gray-500 text-sm mt-2 break-all">
+                {user.email}
+              </p>
               <div className="mt-3">
                 {user.isVerified ? (
                   <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-medium">
@@ -691,29 +693,32 @@ export default function ProfilePage(): JSX.Element {
             <button
               onClick={() => setActiveTab("profile")}
               className={`flex-1 py-3 px-4 md:px-6 rounded-xl font-medium transition-all ${
-                activeTab === "profile" ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md" : "text-gray-600 hover:bg-gray-50"
+                activeTab === "profile"
+                  ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md"
+                  : "text-gray-600 hover:bg-gray-50"
               }`}
             >
-              <User className="inline mr-2" size={18} />
-              Profile
+              <User className="inline mr-2" size={18} /> Profile
             </button>
             <button
               onClick={() => setActiveTab("security")}
               className={`flex-1 py-3 px-4 md:px-6 rounded-xl font-medium transition-all ${
-                activeTab === "security" ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md" : "text-gray-600 hover:bg-gray-50"
+                activeTab === "security"
+                  ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md"
+                  : "text-gray-600 hover:bg-gray-50"
               }`}
             >
-              <Lock className="inline mr-2" size={18} />
-              Security
+              <Lock className="inline mr-2" size={18} /> Security
             </button>
             <button
               onClick={() => setActiveTab("addresses")}
               className={`flex-1 py-3 px-4 md:px-6 rounded-xl font-medium transition-all ${
-                activeTab === "addresses" ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md" : "text-gray-600 hover:bg-gray-50"
+                activeTab === "addresses"
+                  ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md"
+                  : "text-gray-600 hover:bg-gray-50"
               }`}
             >
-              <MapPin className="inline mr-2" size={18} />
-              Addresses
+              <MapPinIcon /> Addresses
             </button>
           </div>
         </div>
@@ -721,42 +726,83 @@ export default function ProfilePage(): JSX.Element {
         <div className="bg-white rounded-3xl shadow-xl p-6 md:p-8 border border-amber-100">
           {activeTab === "profile" && (
             <div>
-              <h2 className="text-xl md:text-2xl font-bold mb-6 text-gray-900">Profile Information</h2>
+              <h2 className="text-xl md:text-2xl font-bold mb-6 text-gray-900">
+                Profile Information
+              </h2>
               {error && (
-                <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">{error}</div>
+                <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
+                  {error}
+                </div>
               )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <User className="inline mr-2" size={16} />
-                    Username
+                    <User className="inline mr-2" size={16} /> Username
                   </label>
-                  <input value={form.username} onChange={(e) => setForm((f) => ({ ...f, username: e.target.value }))} className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all" placeholder="Enter username" />
+                  <input
+                    value={form.username}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, username: e.target.value }))
+                    }
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
+                    placeholder="Enter username"
+                  />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <PhoneIcon className="inline mr-2" size={16} />
-                    Phone Number
+                    <PhoneIcon className="inline mr-2" size={16} /> Phone Number
                   </label>
-                  <input value={form.phone || ""} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value.replace(/\D/g, "") }))} className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all" placeholder="Enter phone number" />
+                  <input
+                    value={form.phone || ""}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        phone: e.target.value.replace(/\D/g, ""),
+                      }))
+                    }
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
+                    placeholder="Enter phone number"
+                  />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">First Name</label>
-                  <input value={form.firstName} onChange={(e) => setForm((f) => ({ ...f, firstName: e.target.value }))} className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all" placeholder="Enter first name" />
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    First Name
+                  </label>
+                  <input
+                    value={form.firstName}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, firstName: e.target.value }))
+                    }
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
+                    placeholder="Enter first name"
+                  />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Last Name</label>
-                  <input value={form.lastName} onChange={(e) => setForm((f) => ({ ...f, lastName: e.target.value }))} className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all" placeholder="Enter last name" />
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Last Name
+                  </label>
+                  <input
+                    value={form.lastName}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, lastName: e.target.value }))
+                    }
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
+                    placeholder="Enter last name"
+                  />
                 </div>
               </div>
 
               <div className="mt-8 flex justify-end">
-                <button onClick={handleSaveProfile} disabled={saving} className="w-full md:w-auto px-8 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-medium hover:shadow-lg transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed">
-                  <Save className="inline mr-2" size={18} />
+                <button
+                  onClick={handleSaveProfile}
+                  disabled={saving}
+                  className="w-full md:w-auto px-8 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-medium hover:shadow-lg transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Save className="inline mr-2" size={18} />{" "}
                   {saving ? "Saving..." : "Save Profile"}
                 </button>
               </div>
@@ -765,52 +811,113 @@ export default function ProfilePage(): JSX.Element {
 
           {activeTab === "security" && (
             <div>
-              <h2 className="text-xl md:text-2xl font-bold mb-6 text-gray-900">Security Settings</h2>
+              <h2 className="text-xl md:text-2xl font-bold mb-6 text-gray-900">
+                Security Settings
+              </h2>
               {error && (
-                <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">{error}</div>
+                <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
+                  {error}
+                </div>
               )}
 
               <div className="space-y-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <Mail className="inline mr-2" size={16} />
-                    Change Email
+                    <Mail className="inline mr-2" size={16} /> Change Email
                   </label>
-                  <input placeholder="newemail@example.com" value={securityForm.newEmail} onChange={(e) => setSecurityForm((f) => ({ ...f, newEmail: e.target.value }))} className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all" />
-                  <p className="text-xs text-gray-500 mt-2">An OTP will be sent to verify the new email address</p>
+                  <input
+                    placeholder="newemail@example.com"
+                    value={securityForm.newEmail}
+                    onChange={(e) =>
+                      setSecurityForm((f) => ({
+                        ...f,
+                        newEmail: e.target.value,
+                      }))
+                    }
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
+                  />
+                  <p className="text-xs text-gray-500 mt-2">
+                    An OTP will be sent to verify the new email address
+                  </p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      <Lock className="inline mr-2" size={16} />
-                      Current Password
+                      <Lock className="inline mr-2" size={16} /> Current
+                      Password
                     </label>
                     <div className="relative">
-                      <input value={securityForm.currentPassword} onChange={(e) => setSecurityForm((f) => ({ ...f, currentPassword: e.target.value }))} type={showPassword ? "text" : "password"} className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all pr-12" placeholder="Enter current password" />
-                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700">
-                        {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                      <input
+                        value={securityForm.currentPassword}
+                        onChange={(e) =>
+                          setSecurityForm((f) => ({
+                            ...f,
+                            currentPassword: e.target.value,
+                          }))
+                        }
+                        type={showPassword ? "text" : "password"}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all pr-12"
+                        placeholder="Enter current password"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                      >
+                        {showPassword ? (
+                          <EyeOff size={20} />
+                        ) : (
+                          <Eye size={20} />
+                        )}
                       </button>
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">New Password</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      New Password
+                    </label>
                     <div className="relative">
-                      <input value={securityForm.newPassword} onChange={(e) => setSecurityForm((f) => ({ ...f, newPassword: e.target.value }))} type={showNewPassword ? "text" : "password"} className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all pr-12" placeholder="Enter new password" />
-                      <button type="button" onClick={() => setShowNewPassword(!showNewPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700">
-                        {showNewPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                      <input
+                        value={securityForm.newPassword}
+                        onChange={(e) =>
+                          setSecurityForm((f) => ({
+                            ...f,
+                            newPassword: e.target.value,
+                          }))
+                        }
+                        type={showNewPassword ? "text" : "password"}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all pr-12"
+                        placeholder="Enter new password"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                      >
+                        {showNewPassword ? (
+                          <EyeOff size={20} />
+                        ) : (
+                          <Eye size={20} />
+                        )}
                       </button>
                     </div>
                   </div>
                 </div>
 
-                <p className="text-sm text-gray-500">Password must be at least 8 characters long</p>
+                <p className="text-sm text-gray-500">
+                  Password must be at least 8 characters long
+                </p>
               </div>
 
               <div className="mt-8 flex justify-end">
-                <button onClick={handleSaveSecurity} disabled={saving} className="w-full md:w-auto px-8 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-medium hover:shadow-lg transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed">
-                  <Save className="inline mr-2" size={18} />
+                <button
+                  onClick={handleSaveSecurity}
+                  disabled={saving}
+                  className="w-full md:w-auto px-8 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-medium hover:shadow-lg transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Save className="inline mr-2" size={18} />{" "}
                   {saving ? "Saving..." : "Update Security"}
                 </button>
               </div>
@@ -820,14 +927,22 @@ export default function ProfilePage(): JSX.Element {
           {activeTab === "addresses" && (
             <div>
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-                <h2 className="text-xl md:text-2xl font-bold text-gray-900">Saved Addresses</h2>
-                <button onClick={openAddAddress} className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-medium hover:shadow-lg transition-all transform hover:scale-105">
-                  <Plus className="inline mr-2" size={18} />
-                  Add New Address
+                <h2 className="text-xl md:text-2xl font-bold text-gray-900">
+                  Saved Addresses
+                </h2>
+                <button
+                  onClick={openAddAddress}
+                  className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-medium hover:shadow-lg transition-all transform hover:scale-105"
+                >
+                  <Plus className="inline mr-2" size={18} /> Add New Address
                 </button>
               </div>
 
-              {error && <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">{error}</div>}
+              {error && (
+                <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
+                  {error}
+                </div>
+              )}
 
               {addrLoading ? (
                 <div className="text-center py-8">
@@ -836,9 +951,11 @@ export default function ProfilePage(): JSX.Element {
                 </div>
               ) : addresses.length === 0 ? (
                 <div className="text-center py-12 bg-gray-50 rounded-2xl">
-                  <MapPin className="mx-auto mb-4 text-gray-400" size={48} />
+                  <MapPinIconLarge />
                   <p className="text-gray-600 mb-2">No addresses saved yet</p>
-                  <p className="text-sm text-gray-500">Add your first address to get started</p>
+                  <p className="text-sm text-gray-500">
+                    Add your first address to get started
+                  </p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -846,17 +963,32 @@ export default function ProfilePage(): JSX.Element {
                     const name = addr.fullName || addr.full_name || "";
                     const line1 = addr.addressLine1 || addr.address_line1 || "";
                     const line2 = addr.addressLine2 || addr.address_line2 || "";
-                    const type = addr.addressType || addr.address_type || "shipping";
-                    const isDefault = addr.isDefault ?? addr.is_default ?? false;
+                    const type =
+                      addr.addressType || addr.address_type || "shipping";
+                    const isDefault =
+                      addr.isDefault ?? addr.is_default ?? false;
 
                     return (
-                      <div key={addr.id} className="p-6 border-2 border-gray-200 rounded-2xl hover:border-amber-300 transition-all bg-gradient-to-br from-white to-gray-50">
+                      <div
+                        key={addr.id}
+                        className="p-6 border-2 border-gray-200 rounded-2xl hover:border-amber-300 transition-all bg-gradient-to-br from-white to-gray-50"
+                      >
                         <div className="flex justify-between items-start mb-3">
                           <div className="flex items-center gap-2">
-                            {type === "shipping" ? <Home className="text-amber-600" size={20} /> : <Building2 className="text-amber-600" size={20} />}
-                            <span className="font-semibold text-gray-900">{name}</span>
+                            {type === "shipping" ? (
+                              <Home className="text-amber-600" size={20} />
+                            ) : (
+                              <Building2 className="text-amber-600" size={20} />
+                            )}
+                            <span className="font-semibold text-gray-900">
+                              {name}
+                            </span>
                           </div>
-                          {isDefault && <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-medium">Default</span>}
+                          {isDefault && (
+                            <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-medium">
+                              Default
+                            </span>
+                          )}
                         </div>
 
                         <div className="space-y-1 text-sm text-gray-600 mb-4">
@@ -873,15 +1005,24 @@ export default function ProfilePage(): JSX.Element {
 
                         <div className="flex flex-wrap gap-2">
                           {!isDefault && (
-                            <button onClick={() => setDefaultAddr(addr.id)} className="flex-1 min-w-[120px] px-3 py-2 border border-amber-500 text-amber-600 rounded-lg hover:bg-amber-50 transition-all text-sm font-medium">
+                            <button
+                              onClick={() => setDefaultAddr(addr.id)}
+                              className="flex-1 min-w-[120px] px-3 py-2 border border-amber-500 text-amber-600 rounded-lg hover:bg-amber-50 transition-all text-sm font-medium"
+                            >
                               Set Default
                             </button>
                           )}
-                          <button onClick={() => openEditAddress(addr)} className="flex-1 min-w-[120px] px-3 py-2 bg-amber-100 text-amber-700 rounded-lg hover:bg-amber-200 transition-all text-sm font-medium">
+                          <button
+                            onClick={() => openEditAddress(addr)}
+                            className="flex-1 min-w-[120px] px-3 py-2 bg-amber-100 text-amber-700 rounded-lg hover:bg-amber-200 transition-all text-sm font-medium"
+                          >
                             <Edit2 className="inline mr-1" size={14} />
                             Edit
                           </button>
-                          <button onClick={() => deleteAddress(addr.id)} className="px-3 py-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-all text-sm font-medium">
+                          <button
+                            onClick={() => deleteAddress(addr.id)}
+                            className="px-3 py-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-all text-sm font-medium"
+                          >
                             <Trash2 className="inline" size={14} />
                           </button>
                         </div>
@@ -900,13 +1041,32 @@ export default function ProfilePage(): JSX.Element {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-md bg-white rounded-2xl p-6 shadow-2xl">
             <h3 className="text-xl font-bold mb-2">Verify Email Change</h3>
-            <p className="text-sm text-gray-600 mb-4">{otpMessage || "Enter the OTP sent to your new email address"}</p>
-            <input value={otpCode} onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))} className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent mb-4" placeholder="Enter 6-digit OTP" maxLength={6} />
+            <p className="text-sm text-gray-600 mb-4">
+              {otpMessage || "Enter the OTP sent to your new email address"}
+            </p>
+            <input
+              value={otpCode}
+              onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent mb-4"
+              placeholder="Enter 6-digit OTP"
+              maxLength={6}
+            />
             <div className="flex gap-3">
-              <button onClick={handleVerifyEmailChange} disabled={otpLoading} className="flex-1 px-4 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-medium hover:shadow-lg transition-all disabled:opacity-50">
+              <button
+                onClick={handleVerifyEmailChange}
+                disabled={otpLoading}
+                className="flex-1 px-4 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-medium hover:shadow-lg transition-all disabled:opacity-50"
+              >
                 {otpLoading ? "Verifying..." : "Verify OTP"}
               </button>
-              <button onClick={() => { setOtpModalOpen(false); setOtpCode(""); setOtpMessage(null); }} className="px-4 py-3 border border-gray-300 rounded-xl font-medium hover:bg-gray-50 transition-all">
+              <button
+                onClick={() => {
+                  setOtpModalOpen(false);
+                  setOtpCode("");
+                  setOtpMessage(null);
+                }}
+                className="px-4 py-3 border border-gray-300 rounded-xl font-medium hover:bg-gray-50 transition-all"
+              >
                 Cancel
               </button>
             </div>
@@ -914,193 +1074,365 @@ export default function ProfilePage(): JSX.Element {
         </div>
       )}
 
-      {/* Address Modal */}
+      {/* Address Modal (with pincode-only picker) */}
       {addrModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 overflow-y-auto">
           <div className="w-full max-w-2xl bg-white rounded-2xl p-6 shadow-2xl my-8">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl md:text-2xl font-bold">{editingAddr ? "Edit Address" : "Add New Address"}</h3>
+              <h3 className="text-xl md:text-2xl font-bold">
+                {editingAddr ? "Edit Address" : "Add New Address"}
+              </h3>
               <div className="flex gap-2">
-                <button onClick={() => { setAddrModalOpen(false); setEditingAddr(null); setShowMapPicker(false); }} className="px-3 py-1 rounded border">Close</button>
+                <button
+                  onClick={() => {
+                    setAddrModalOpen(false);
+                    setEditingAddr(null);
+                    setPincodeResults(null);
+                    setSelectedPOIndex(null);
+                    setPincodeSearch("");
+                  }}
+                  className="px-3 py-1 rounded border"
+                >
+                  Close
+                </button>
               </div>
             </div>
 
-            {!showMapPicker ? (
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Address Type</label>
-                    <select value={addrForm.address_type || "shipping"} onChange={(e) => setAddrForm((s) => ({ ...s, address_type: e.target.value as any }))} className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent">
-                      <option value="shipping">Shipping Address</option>
-                      <option value="billing">Billing Address</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
-                    <input placeholder="John Doe" value={addrForm.full_name || ""} onChange={(e) => setAddrForm((s) => ({ ...s, full_name: e.target.value }))} className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent" />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
-                    <input placeholder="1234567890" value={addrForm.phone || ""} onChange={(e) => setAddrForm((s) => ({ ...s, phone: e.target.value.replace(/\D/g, "") }))} className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent" />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Pincode</label>
-                    <input placeholder="395009" value={addrForm.pincode || ""} onChange={(e) => setAddrForm((s) => ({ ...s, pincode: e.target.value }))} className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent" />
-                  </div>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Address Type
+                  </label>
+                  <select
+                    value={addrForm.address_type || "shipping"}
+                    onChange={(e) =>
+                      setAddrForm((s) => ({
+                        ...s,
+                        address_type: e.target.value as any,
+                      }))
+                    }
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500"
+                  >
+                    <option value="shipping">Shipping Address</option>
+                    <option value="billing">Billing Address</option>
+                  </select>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Address Line 1</label>
-                  <input placeholder="House/Flat No., Building Name" value={addrForm.address_line1 || ""} onChange={(e) => setAddrForm((s) => ({ ...s, address_line1: e.target.value }))} className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent" />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Address Line 2 (Optional)</label>
-                  <input placeholder="Street, Area, Landmark" value={addrForm.address_line2 || ""} onChange={(e) => setAddrForm((s) => ({ ...s, address_line2: e.target.value }))} className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent" />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">City</label>
-                    <input placeholder="Surat" value={addrForm.city || ""} onChange={(e) => setAddrForm((s) => ({ ...s, city: e.target.value }))} className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent" />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">State</label>
-                    <input placeholder="Gujarat" value={addrForm.state || ""} onChange={(e) => setAddrForm((s) => ({ ...s, state: e.target.value }))} className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent" />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Country</label>
-                    <input placeholder="India" value={addrForm.country || "India"} onChange={(e) => setAddrForm((s) => ({ ...s, country: e.target.value }))} className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent" />
-                  </div>
-                </div>
-
-                <button onClick={() => setShowMapPicker(true)} className="w-full py-3 border-2 border-dashed border-amber-300 text-amber-600 rounded-xl hover:bg-amber-50 transition-all font-medium">
-                  <Navigation className="inline mr-2" size={18} /> Use Map / Pincode Lookup to autofill
-                </button>
-
-                {error && <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">{error}</div>}
-
-                <div className="flex flex-col sm:flex-row gap-3 pt-4">
-                  <button onClick={saveAddress} className="flex-1 px-6 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-medium hover:shadow-lg transition-all">
-                    <Save className="inline mr-2" size={18} /> Save Address
-                  </button>
-                  <button onClick={() => { setAddrModalOpen(false); setEditingAddr(null); }} className="px-6 py-3 border border-gray-300 rounded-xl font-medium hover:bg-gray-50 transition-all">Cancel</button>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Full Name
+                  </label>
+                  <input
+                    placeholder="John Doe"
+                    value={addrForm.full_name || ""}
+                    onChange={(e) =>
+                      setAddrForm((s) => ({ ...s, full_name: e.target.value }))
+                    }
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500"
+                  />
                 </div>
               </div>
-            ) : (
-              <div className="space-y-4">
-                {/* Map Picker / Pincode UI */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                  <div className="md:col-span-2 flex gap-2">
-                    <input placeholder="Search for a location or address..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyPress={(e) => e.key === "Enter" && searchLocation()} className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500" />
-                    <button onClick={searchLocation} className="px-4 md:px-6 py-3 bg-amber-500 text-white rounded-xl hover:bg-amber-600 transition-all">
-                      <Search size={18} />
-                    </button>
-                    <button onClick={handleUseCurrentLocation} className="px-4 md:px-6 py-3 bg-green-500 text-white rounded-xl hover:bg-green-600 transition-all">
-                      <Navigation size={18} />
-                    </button>
-                  </div>
 
-                  <div className="flex gap-2">
-                    <input placeholder="Enter pincode" value={pincodeSearch} onChange={(e) => setPincodeSearch(e.target.value.replace(/\D/g, ""))} className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500" />
-                    <button onClick={() => lookupPincode()} disabled={pincodeLoading} className="px-4 py-3 bg-amber-500 text-white rounded-xl hover:bg-amber-600 transition-all">
-                      {pincodeLoading ? "Searching..." : "Lookup"}
-                    </button>
-                  </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Phone Number
+                  </label>
+                  <input
+                    placeholder="1234567890"
+                    value={addrForm.phone || ""}
+                    onChange={(e) =>
+                      setAddrForm((s) => ({
+                        ...s,
+                        phone: e.target.value.replace(/\D/g, ""),
+                      }))
+                    }
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500"
+                  />
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                  <div className="lg:col-span-1 space-y-2">
-                    <div className="text-sm text-gray-600">Lookup results</div>
-                    <div className="p-3 bg-white border rounded-xl h-64 overflow-auto">
-                      {pincodeLoading && <div className="text-sm text-gray-500">Loading areas...</div>}
-                      {!pincodeLoading && pincodeError && <div className="text-sm text-red-600">{pincodeError}</div>}
-                      {!pincodeLoading && !pincodeError && (!pincodeResults || pincodeResults.length === 0) && <div className="text-sm text-gray-500">No areas yet — try another pincode</div>}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Pincode
+                  </label>
 
-                      {!pincodeLoading && pincodeResults && pincodeResults.length > 0 && (
-                        <div className="space-y-2">
-                          {pincodeResults.map((po: any, idx: number) => (
-                            <label key={idx} className={`flex items-start gap-3 p-2 border rounded-md cursor-pointer ${selectedPOIndex === idx ? "border-amber-400 bg-amber-50" : "hover:bg-gray-50"}`}>
-                              <input type="radio" name="po-select" checked={selectedPOIndex === idx} onChange={() => setSelectedPOIndex(idx)} className="mt-1" />
-                              <div className="text-sm">
-                                <div className="font-medium">{po.Name}</div>
-                                <div className="text-xs text-gray-500">{po.Block ? po.Block + ", " : ""}{po.Division ? po.Division + ", " : ""}{po.District}</div>
-                                <div className="text-xs text-gray-400">{po.State} • {po.Country}</div>
-                              </div>
-                            </label>
-                          ))}
+                  {/* On very small screens stack vertically, otherwise row */}
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <input
+                      placeholder="395009"
+                      value={addrForm.pincode || pincodeSearch || ""}
+                      onChange={(e) => {
+                        const v = e.target.value.replace(/\D/g, "");
+                        setPincodeSearch(v);
+                        setAddrForm((s) => ({ ...s, pincode: v }));
+                      }}
+                      className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500 w-full"
+                    />
 
-                          <div className="pt-2 flex gap-2">
-                            <button onClick={() => applySelectedPostOffice(undefined)} disabled={selectedPOIndex == null} className="flex-1 px-3 py-2 bg-amber-500 text-white rounded-md disabled:opacity-50">
-                              Apply selected area
-                            </button>
-                            <button onClick={() => {
-                              if (pincodeResults && pincodeResults.length === 1) {
-                                setSelectedPOIndex(0);
-                                applySelectedPostOffice(0);
-                                return;
-                              }
-                              if (pincodeResults && pincodeResults[0]) {
-                                const po = pincodeResults[0];
-                                setAddrForm((f) => ({ ...f, pincode: pincodeSearch || f.pincode || "", city: po.District || f.city, state: po.State || f.state, country: po.Country || f.country || "India" }));
-                                setShowMapPicker(false);
-                                setPincodeResults(null);
-                                setPincodeSearch("");
-                              }
-                            }} className="px-3 py-2 border rounded-md">Autofill city/state</button>
-                          </div>
-                        </div>
+                    <button
+                      onClick={() =>
+                        lookupPincode(addrForm.pincode || pincodeSearch)
+                      }
+                      disabled={pincodeLoading}
+                      className={`flex-none inline-flex items-center justify-center gap-2 min-w-[96px] px-4 py-3 rounded-xl text-white font-medium transition-all
+        ${
+          pincodeLoading
+            ? "bg-amber-400 cursor-wait"
+            : "bg-amber-500 hover:bg-amber-600"
+        }`}
+                    >
+                      {pincodeLoading ? (
+                        // short label to avoid overflow while loading
+                        "Searching..."
+                      ) : (
+                        <>
+                          <Search size={16} />
+                          <span className="hidden sm:inline">Lookup</span>
+                          {/* show only icon on very small screens */}
+                          <span className="sm:hidden">Go</span>
+                        </>
                       )}
-                    </div>
+                    </button>
                   </div>
 
-                  <div className="lg:col-span-2">
-                    <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl p-6 h-64 flex flex-col justify-between border-2 border-dashed border-amber-300">
-                      <div>
-                        <div className="flex items-center gap-3 mb-3">
-                          <MapPin className="text-amber-500" size={18} />
-                          <div>
-                            <div className="font-medium text-gray-800">Map Preview</div>
-                            <div className="text-xs text-gray-500">You can use search, current location or pincode results to fill fields</div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Lookup pincode to autofill city and state (India)
+                  </p>
+                </div>
+              </div>
+
+              {/* Pincode results */}
+              {pincodeError && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
+                  {pincodeError}
+                </div>
+              )}
+              {pincodeResults && (
+                <div className="p-3 bg-gray-50 border rounded-xl">
+                  <div className="text-sm font-medium mb-2">
+                    Select area (Post Office)
+                  </div>
+                  <div className="space-y-2 max-h-48 overflow-auto">
+                    {pincodeResults.map((po: any, idx: number) => (
+                      <label
+                        key={idx}
+                        className={`flex items-start gap-3 p-2 border rounded-md cursor-pointer ${
+                          selectedPOIndex === idx
+                            ? "border-amber-400 bg-amber-50"
+                            : "hover:bg-white"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="po-select"
+                          checked={selectedPOIndex === idx}
+                          onChange={() => setSelectedPOIndex(idx)}
+                          className="mt-1"
+                        />
+                        <div className="text-sm">
+                          <div className="font-medium">{po.Name}</div>
+                          <div className="text-xs text-gray-500">
+                            {po.Block ? po.Block + ", " : ""}
+                            {po.Division ? po.Division + ", " : ""}
+                            {po.District}
+                          </div>
+                          <div className="text-xs text-gray-400">
+                            {po.State} • {po.Country}
                           </div>
                         </div>
-
-                        <div className="text-sm text-gray-700">
-                          Latitude: <span className="font-medium">{mapLocation.lat.toFixed(4)}</span> • Longitude: <span className="font-medium">{mapLocation.lng.toFixed(4)}</span>
-                        </div>
-
-                        <div className="mt-3 text-sm text-gray-600">
-                          Selected address preview:
-                          <div className="mt-2">
-                            <div className="text-sm text-gray-800">{addrForm.address_line1 || "Address line 1"}</div>
-                            <div className="text-xs text-gray-600">{addrForm.address_line2 || (selectedPOIndex != null && pincodeResults ? pincodeResults[selectedPOIndex].Name : "")}</div>
-                            <div className="text-xs text-gray-600">{addrForm.city || ""}{addrForm.city ? ", " : ""}{addrForm.state || ""}{addrForm.pincode ? " - " + addrForm.pincode : ""}</div>
-                            <div className="text-xs text-gray-600">{addrForm.country || "India"}</div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex gap-2">
-                        <button onClick={() => { reverseGeocode(mapLocation.lat, mapLocation.lng); setShowMapPicker(false); }} className="flex-1 px-4 py-3 bg-amber-500 text-white rounded-xl">
-                          Use this location
-                        </button>
-                        <button onClick={() => setShowMapPicker(false)} className="px-4 py-3 border rounded-xl">Cancel</button>
-                      </div>
+                      </label>
+                    ))}
+                    <div className="pt-2 flex gap-2">
+                      <button
+                        onClick={() => applySelectedPostOffice()}
+                        disabled={selectedPOIndex == null}
+                        className="flex-1 px-3 py-2 bg-amber-500 text-white rounded-md disabled:opacity-50"
+                      >
+                        Apply selected area
+                      </button>
+                      <button
+                        onClick={() => {
+                          /* autofill with first PO if present */ if (
+                            pincodeResults &&
+                            pincodeResults[0]
+                          ) {
+                            setSelectedPOIndex(0);
+                            applySelectedPostOffice(0);
+                          }
+                        }}
+                        className="px-3 py-2 border rounded-md"
+                      >
+                        Use first area
+                      </button>
                     </div>
                   </div>
                 </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Address Line 1
+                </label>
+                <input
+                  placeholder="House/Flat No., Building Name"
+                  value={addrForm.address_line1 || ""}
+                  onChange={(e) =>
+                    setAddrForm((s) => ({
+                      ...s,
+                      address_line1: e.target.value,
+                    }))
+                  }
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500"
+                />
               </div>
-            )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Address Line 2 (Optional)
+                </label>
+                <input
+                  placeholder="Street, Area, Landmark"
+                  value={addrForm.address_line2 || ""}
+                  onChange={(e) =>
+                    setAddrForm((s) => ({
+                      ...s,
+                      address_line2: e.target.value,
+                    }))
+                  }
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    City
+                  </label>
+                  <input
+                    placeholder="Surat"
+                    value={addrForm.city || ""}
+                    onChange={(e) =>
+                      setAddrForm((s) => ({ ...s, city: e.target.value }))
+                    }
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    State
+                  </label>
+                  <input
+                    placeholder="Gujarat"
+                    value={addrForm.state || ""}
+                    onChange={(e) =>
+                      setAddrForm((s) => ({ ...s, state: e.target.value }))
+                    }
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Country
+                  </label>
+                  <input
+                    placeholder="India"
+                    value={addrForm.country || "India"}
+                    onChange={(e) =>
+                      setAddrForm((s) => ({ ...s, country: e.target.value }))
+                    }
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3 pt-4">
+                <button
+                  onClick={saveAddress}
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-medium hover:shadow-lg transition-all"
+                >
+                  <Save className="inline mr-2" size={18} /> Save Address
+                </button>
+                <button
+                  onClick={() => {
+                    setAddrModalOpen(false);
+                    setEditingAddr(null);
+                    setPincodeResults(null);
+                    setSelectedPOIndex(null);
+                  }}
+                  className="px-6 py-3 border border-gray-300 rounded-xl font-medium hover:bg-gray-50 transition-all"
+                >
+                  Cancel
+                </button>
+              </div>
+
+              {error && (
+                <div className="mt-3 text-sm text-red-600">{error}</div>
+              )}
+            </div>
           </div>
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * Small local helper components to keep JSX tidy:
+ * MapPinIcon and MapPinIconLarge - you can replace with lucide MapPin imports
+ */
+function MapPinIcon() {
+  // simple inline svg to avoid extra imports if needed
+  return (
+    <svg
+      className="inline mr-2"
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+    >
+      <path
+        d="M12 11.5a2 2 0 100-4 2 2 0 000 4z"
+        stroke="#D97706"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M12 21s8-4.5 8-11a8 8 0 10-16 0c0 6.5 8 11 8 11z"
+        stroke="#D97706"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+function MapPinIconLarge() {
+  return (
+    <svg
+      className="mx-auto mb-4 text-gray-400"
+      width="48"
+      height="48"
+      viewBox="0 0 24 24"
+      fill="none"
+    >
+      <path
+        d="M12 11.5a2 2 0 100-4 2 2 0 000 4z"
+        stroke="#9CA3AF"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M12 21s8-4.5 8-11a8 8 0 10-16 0c0 6.5 8 11 8 11z"
+        stroke="#9CA3AF"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }

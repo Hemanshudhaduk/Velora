@@ -35,6 +35,7 @@ type AuthContextType = {
   signOut: () => void;
   refreshProfile: () => Promise<void>;
   fetchWithAuth: (path: string, options?: RequestInit, opts?: { useCookies?: boolean }) => Promise<any>;
+  
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);

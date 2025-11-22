@@ -1,71 +1,255 @@
-import React, { createContext, useContext, useState } from "react";
+// src/contexts/CartContext.tsx
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useAuth } from './AuthContext';
+import { getToken, getUser, setToken as storeToken, setUser as storeUser, clearAuth } from "@/utils/localStore";
+
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
 interface CartItem {
   id: string;
-  name: string;
-  price: number;
-  color: string;
-  size: string;
+  productId: string;
+  productName: string;
+  selectedSize: string;
   quantity: number;
-  image: string;
+  currentPrice: number;
+  mainImage: string;
+  availableStock: number;
+  inStock: boolean;
+}
+
+interface WishlistItem {
+  id: string;
+  productId: string;
+  productName: string;
+  mainImage: string;
+  finalPrice: number;
+  isActive: boolean;
+  inStock: boolean;
+  availableSizes: Array<{ size: string; stock: number }>;
 }
 
 interface CartContextType {
-  items: CartItem[];
-  addItem: (item: Omit<CartItem, "quantity">) => void;
-  removeItem: (id: string, color: string, size: string) => void;
-  updateQuantity: (id: string, color: string, size: string, quantity: number) => void;
-  clearCart: () => void;
-  totalItems: number;
+  cartItems: CartItem[];
+  wishlistItems: WishlistItem[];
+  cartCount: number;
+  wishlistCount: number;
+  loading: boolean;
+  addToCart: (productId: string, selectedSize: string, quantity: number) => Promise<void>;
+  removeFromCart: (cartItemId: string) => Promise<void>;
+  updateCartQuantity: (cartItemId: string, quantity: number) => Promise<void>;
+  addToWishlist: (productId: string) => Promise<void>;
+  removeFromWishlist: (wishlistItemId: string) => Promise<void>;
+  isInWishlist: (productId: string) => boolean;
+  refreshCart: () => Promise<void>;
+  refreshWishlist: () => Promise<void>;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [items, setItems] = useState<CartItem[]>([]);
+export const CartProvider = ({ children }: { children: ReactNode }) => {
+  const { isAuthenticated } = useAuth();
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>([]);
+  const [cartCount, setCartCount] = useState(0);
+  const [wishlistCount, setWishlistCount] = useState(0);
+  const [loading, setLoading] = useState(false);
 
-  const addItem = (item: Omit<CartItem, "quantity">) => {
-    setItems((prev) => {
-      const existingItem = prev.find(
-        (i) => i.id === item.id && i.color === item.color && i.size === item.size
-      );
+  const getAuthHeaders = () => {
+    const token = getToken();
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': token ? `Bearer ${token}` : '',
+    };
+  };
+
+  const refreshCart = async () => {
+    if (!isAuthenticated) {
+      setCartItems([]);
+      setCartCount(0);
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE}/api/cart/list`, {
+        headers: getAuthHeaders(),
+      });
+      const data = await response.json();
       
-      if (existingItem) {
-        return prev.map((i) =>
-          i.id === item.id && i.color === item.color && i.size === item.size
-            ? { ...i, quantity: i.quantity + 1 }
-            : i
-        );
+      if (data.success) {
+        setCartItems(data.data.cartItems || []);
+        setCartCount(data.data.summary?.totalItems || 0);
       }
+    } catch (error) {
+      console.error('Error fetching cart:', error);
+    }
+  };
+
+  const refreshWishlist = async () => {
+    if (!isAuthenticated) {
+      setWishlistItems([]);
+      setWishlistCount(0);
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE}/api/wishlist/list`, {
+        headers: getAuthHeaders(),
+      });
+      const data = await response.json();
       
-      return [...prev, { ...item, quantity: 1 }];
-    });
+      if (data.success) {
+        setWishlistItems(data.data.wishlistItems || []);
+        setWishlistCount(data.data.total || 0);
+      }
+    } catch (error) {
+      console.error('Error fetching wishlist:', error);
+    }
   };
 
-  const removeItem = (id: string, color: string, size: string) => {
-    setItems((prev) =>
-      prev.filter((item) => !(item.id === id && item.color === color && item.size === size))
-    );
+  useEffect(() => {
+    if (isAuthenticated) {
+      refreshCart();
+      refreshWishlist();
+    }
+  }, [isAuthenticated]);
+
+  const addToCart = async (productId: string, selectedSize: string, quantity: number) => {
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_BASE}/api/cart/add`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ productId, selectedSize, quantity }),
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        await refreshCart();
+        return Promise.resolve();
+      } else {
+        throw new Error(data.message || 'Failed to add to cart');
+      }
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const updateQuantity = (id: string, color: string, size: string, quantity: number) => {
-    setItems((prev) =>
-      prev.map((item) =>
-        item.id === id && item.color === color && item.size === size
-          ? { ...item, quantity }
-          : item
-      )
-    );
+  const removeFromCart = async (cartItemId: string) => {
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_BASE}/api/cart/${cartItemId}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        await refreshCart();
+      }
+    } catch (error) {
+      console.error('Error removing from cart:', error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const clearCart = () => {
-    setItems([]);
+  const updateCartQuantity = async (cartItemId: string, quantity: number) => {
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_BASE}/api/cart/${cartItemId}`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ quantity }),
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        await refreshCart();
+      }
+    } catch (error) {
+      console.error('Error updating cart quantity:', error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
+  const addToWishlist = async (productId: string) => {
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_BASE}/api/wishlist/add`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ productId }),
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        await refreshWishlist();
+        return Promise.resolve();
+      } else {
+        throw new Error(data.message || 'Failed to add to wishlist');
+      }
+    } catch (error) {
+      console.error('Error adding to wishlist:', error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const removeFromWishlist = async (wishlistItemId: string) => {
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_BASE}/api/wishlist/${wishlistItemId}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        await refreshWishlist();
+      }
+    } catch (error) {
+      console.error('Error removing from wishlist:', error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const isInWishlist = (productId: string): boolean => {
+    return wishlistItems.some(item => item.productId === productId);
+  };
 
   return (
-    <CartContext.Provider value={{ items, addItem, removeItem, updateQuantity, clearCart, totalItems }}>
+    <CartContext.Provider
+      value={{
+        cartItems,
+        wishlistItems,
+        cartCount,
+        wishlistCount,
+        loading,
+        addToCart,
+        removeFromCart,
+        updateCartQuantity,
+        addToWishlist,
+        removeFromWishlist,
+        isInWishlist,
+        refreshCart,
+        refreshWishlist,
+      }}
+    >
       {children}
     </CartContext.Provider>
   );
@@ -74,7 +258,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 export const useCart = () => {
   const context = useContext(CartContext);
   if (context === undefined) {
-    throw new Error("useCart must be used within a CartProvider");
+    throw new Error('useCart must be used within a CartProvider');
   }
   return context;
 };
