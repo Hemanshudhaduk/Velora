@@ -8,7 +8,7 @@ import Footer from "@/components/Footer";
 const API_BASE =
   (import.meta && (import.meta as any).env?.VITE_API_BASE_URL) ||
   (process.env.REACT_APP_API_BASE_URL as string) ||
-  "http://localhost:5000";
+  "https://clothing-store-server.vercel.app";
 
 interface ProductNormalized {
   id: string;

@@ -158,7 +158,7 @@ export const CartModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
                 onClick={handleCheckout}
                 className="flex-1 py-3 bg-purple-700 text-white rounded-lg font-medium hover:bg-purple-800 transition-colors shadow-md"
               >
-                Checkout
+                Place Order
               </button>
             </div>
           </div>

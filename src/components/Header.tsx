@@ -7,7 +7,7 @@ import { useCart } from "@/contexts/CartContext";
 import { CartModal, WishlistModal } from "./CartWishlistModals";
 import Logo from "@/assets/logo-gold.svg";
 
-const API_BASE = "http://localhost:5000";
+const API_BASE = "https://clothing-store-server.vercel.app";
 
 function resolveProfileImage(img?: string | null): string | null {
   if (!img) return null;

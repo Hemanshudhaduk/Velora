@@ -9,7 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 const API_BASE =
   (import.meta as any).env?.VITE_API_BASE_URL ||
   process.env.REACT_APP_API_BASE_URL ||
-  "http://localhost:5000";
+  "https://clothing-store-server.vercel.app";
 
 async function apiPost(path: string, body: any) {
   const res = await fetch(`${API_BASE}${path}`, {

@@ -1,7 +1,7 @@
 // src/contexts/AuthContext.tsx
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getToken, getUser, setToken as storeToken, setUser as storeUser, clearAuth } from "@/utils/localStore";
+import { getToken as getStoredToken, getUser, setToken as storeToken, setUser as storeUser, clearAuth } from "@/utils/localStore";
 
 export type User = {
   id: string;
@@ -23,7 +23,6 @@ type SignUpPayload = {
   password: string;
 };
 
-// src/contexts/AuthContext.tsx
 type AuthContextType = {
   user: User | null;
   token: string | null;
@@ -31,11 +30,11 @@ type AuthContextType = {
   isAuthenticated: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (payload: SignUpPayload) => Promise<any>;
-  signInWithGoogle: (credential: string) => Promise<void>; // Add this
+  signInWithGoogle: (credential: string) => Promise<void>;
   signOut: () => void;
   refreshProfile: () => Promise<void>;
   fetchWithAuth: (path: string, options?: RequestInit, opts?: { useCookies?: boolean }) => Promise<any>;
-  
+  getToken: () => string | null;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -43,25 +42,32 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const API_BASE =
   (import.meta && (import.meta as any).env?.VITE_API_BASE_URL) ||
   (process.env.REACT_APP_API_BASE_URL as string) ||
-  "http://localhost:5000";
+  "https://clothing-store-server.vercel.app";
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const navigate = useNavigate();
-  const [token, setTokenState] = useState<string | null>(() => getToken());
+  const [token, setTokenState] = useState<string | null>(() => getStoredToken());
   const [user, setUserState] = useState<User | null>(() => {
     const su = getUser();
     return su ? (su as User) : null;
   });
   const [loading, setLoading] = useState<boolean>(true);
 
+  // Helper function to get current token
+  const getToken = (): string | null => {
+    return token || getStoredToken();
+  };
+
   // fetch helper — supports cookie-based auth (useCookies: true) or bearer token header
   const fetchWithAuth = async (path: string, options: RequestInit = {}, opts: { useCookies?: boolean } = {}) => {
-    const tokenNow = token || getToken();
+    const tokenNow = getToken();
     const url = `${API_BASE}${path}`;
     const headers: Record<string, string> = {};
 
     // don't set content-type for FormData
-    if (!(options.body instanceof FormData)) headers["Content-Type"] = "application/json";
+    if (!(options.body instanceof FormData)) {
+      headers["Content-Type"] = "application/json";
+    }
 
     if (!opts.useCookies && tokenNow) {
       headers["Authorization"] = `Bearer ${tokenNow}`;
@@ -78,7 +84,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const text = await res.text().catch(() => "");
     let json: any = null;
-    try { json = text ? JSON.parse(text) : null; } catch { json = null; }
+    try { 
+      json = text ? JSON.parse(text) : null; 
+    } catch { 
+      json = null; 
+    }
 
     if (!res.ok) {
       const message = (json && (json.message || json.error)) || res.statusText || "Request failed";
@@ -94,14 +104,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const refreshProfile = async () => {
     const tokenNow = getToken();
     if (!tokenNow) return;
+    
     try {
-      // if you use httpOnly cookies on backend set useCookies:true here.
       const res = await fetchWithAuth("/api/profile/me", { method: "GET" }, { useCookies: false });
       if (res && res.success && res.data && res.data.user) {
         setUserState(res.data.user as User);
         storeUser(res.data.user);
       } else {
-        // Unexpected but not necessarily auth failure — do not force sign out
         console.warn("Unexpected profile response", res);
       }
     } catch (err: any) {
@@ -120,7 +129,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     (async () => {
       try {
         setLoading(true);
-        const storedToken = getToken();
+        const storedToken = getStoredToken();
         if (storedToken) {
           setTokenState(storedToken);
           await refreshProfile();
@@ -152,14 +161,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error(data.message || data.error || "Sign in failed");
       }
 
-      // Accept token in data.data.token or top-level data.token
       const tokenFromServer = data?.data?.token ?? data?.token;
       const userFromServer = data?.data?.user ?? data?.user;
 
       if (!tokenFromServer || !userFromServer) {
-        // If backend uses httpOnly cookie, token may not be returned (it sets cookie instead).
-        // In that case, you should set tokenFromServer === null and still call refreshProfile with cookie credentials.
-        // For now if cookie-based flow is used, expect backend to set cookie and respond success + user.
         if (data.success && data.data?.user && !tokenFromServer) {
           // cookie-based: user returned, token handled via cookie by server
           setUserState(data.data.user as User);
@@ -175,6 +180,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUserState(userFromServer as User);
       storeToken(tokenFromServer);
       storeUser(userFromServer);
+    } catch (error: any) {
+      throw new Error(error.message || "Sign in failed");
     } finally {
       setLoading(false);
     }
@@ -195,42 +202,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error(data.message || data.error || "Signup failed");
       }
       return data;
+    } catch (error: any) {
+      throw new Error(error.message || "Signup failed");
     } finally {
       setLoading(false);
     }
   };
 
+  // Google Sign In
   const signInWithGoogle = async (credential: string) => {
-  setLoading(true);
-  try {
-    const res = await fetch(`${API_BASE}/api/auth/google`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ credential }),
-      credentials: "same-origin",
-    });
-    
-    const data = await res.json();
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/google`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ credential }),
+        credentials: "same-origin",
+      });
+      
+      const data = await res.json();
 
-    if (!res.ok || !data.success) {
-      throw new Error(data.message || "Google sign-in failed");
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || "Google sign-in failed");
+      }
+
+      const tokenFromServer = data?.data?.token;
+      const userFromServer = data?.data?.user;
+
+      if (!tokenFromServer || !userFromServer) {
+        throw new Error("Invalid Google sign-in response");
+      }
+
+      setTokenState(tokenFromServer);
+      setUserState(userFromServer as User);
+      storeToken(tokenFromServer);
+      storeUser(userFromServer);
+    } catch (error: any) {
+      throw new Error(error.message || "Google sign-in failed");
+    } finally {
+      setLoading(false);
     }
-
-    const tokenFromServer = data?.data?.token;
-    const userFromServer = data?.data?.user;
-
-    if (!tokenFromServer || !userFromServer) {
-      throw new Error("Invalid Google sign-in response");
-    }
-
-    setTokenState(tokenFromServer);
-    setUserState(userFromServer as User);
-    storeToken(tokenFromServer);
-    storeUser(userFromServer);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const signOut = () => {
     setTokenState(null);
@@ -249,12 +261,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signOut,
     refreshProfile,
     fetchWithAuth,
-    signInWithGoogle
+    signInWithGoogle,
+    getToken
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
-
 
 export const useAuth = () => {
   const ctx = useContext(AuthContext);

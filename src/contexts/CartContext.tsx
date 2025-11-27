@@ -4,7 +4,7 @@ import { useAuth } from './AuthContext';
 import { getToken, getUser, setToken as storeToken, setUser as storeUser, clearAuth } from "@/utils/localStore";
 
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://clothing-store-server.vercel.app';
 
 interface CartItem {
   id: string;
@@ -48,7 +48,7 @@ interface CartContextType {
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export const CartProvider = ({ children }: { children: ReactNode }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated , getToken  } = useAuth();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>([]);
   const [cartCount, setCartCount] = useState(0);

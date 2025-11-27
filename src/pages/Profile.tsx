@@ -55,7 +55,7 @@ type Address = {
 };
 
 const API_BASE =
-  (import.meta as any)?.env?.VITE_API_BASE_URL || "http://localhost:5000";
+  (import.meta as any)?.env?.VITE_API_BASE_URL || "https://clothing-store-server.vercel.app";
 const API = (path: string) => `${API_BASE}${path}`;
 
 const authFetch = async (url: string, opts: RequestInit = {}) => {

@@ -1,5 +1,5 @@
 // src/pages/Cart.tsx
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Trash2, Plus, Minus, ShoppingBag, Home, ChevronRight } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
@@ -11,6 +11,11 @@ export default function Cart() {
   const { cartItems, cartCount, removeFromCart, updateCartQuantity } = useCart();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
 
   const handleQuantityChange = async (cartItemId: string, newQuantity: number, maxStock: number) => {
     if (newQuantity < 1 || newQuantity > maxStock) return;

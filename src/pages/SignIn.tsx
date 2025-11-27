@@ -31,7 +31,7 @@ export default function SignIn() {
     return true;
   };
 
-  const submit = async (e: any) => {
+  const submit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!validate()) return;
 
@@ -93,9 +93,11 @@ export default function SignIn() {
           <GoogleLogin
             onSuccess={handleGoogleSuccess}
             onError={handleGoogleError}
-            useOneTap
+            useOneTap={false}
             text="signin_with"
-            width="100%"
+            size="large"
+            theme="outline"
+            shape="rectangular"
           />
         </div>
 
@@ -119,6 +121,7 @@ export default function SignIn() {
               className="w-full border px-3 py-2 rounded-md mt-1 focus:outline-none focus:ring-2 focus:ring-amber-500"
               onChange={(e) => setEmail(e.target.value)}
               disabled={busy}
+              required
             />
           </div>
 
@@ -131,12 +134,14 @@ export default function SignIn() {
                 className="w-full border px-3 py-2 rounded-md mt-1 focus:outline-none focus:ring-2 focus:ring-amber-500"
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={busy}
+                required
               />
               <button
                 type="button"
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
                 onClick={() => setShow(!show)}
                 disabled={busy}
+                aria-label={show ? "Hide password" : "Show password"}
               >
                 {show ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
@@ -146,7 +151,7 @@ export default function SignIn() {
           <button
             type="submit"
             disabled={busy}
-            className="w-full bg-amber-500 hover:bg-amber-600 text-white py-2 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-amber-500 hover:bg-amber-600 text-white py-2 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
           >
             {busy ? "Signing in..." : "Sign In"}
           </button>
@@ -155,7 +160,7 @@ export default function SignIn() {
         <p className="mt-4 text-center text-sm text-gray-600">
           New user?{" "}
           <button
-            className="text-amber-600 hover:require is not defined-amber-700 font-medium"
+            className="text-amber-600 hover:underline font-medium"
             onClick={() => navigate("/signup")}
             disabled={busy}
           >
