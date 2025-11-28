@@ -97,13 +97,17 @@ function resolveImageUrl(img?: string | null) {
   const trimmed = img.trim();
   if (!trimmed) return null;
 
+  // If it's already a full URL (including Supabase), return as-is
   if (/^https?:\/\//i.test(trimmed)) {
-    const urlMatch = trimmed.match(/\/uploads\/.+$/);
-    if (urlMatch) return `${API_BASE}${urlMatch[0]}`;
     return trimmed;
   }
 
-  if (trimmed.startsWith("/")) return `${API_BASE}${trimmed}`;
+  // If it starts with /, prepend API_BASE
+  if (trimmed.startsWith("/")) {
+    return `${API_BASE}${trimmed}`;
+  }
+
+  // Otherwise, assume it's a relative path to uploads
   return `${API_BASE}/uploads/${trimmed}`;
 }
 
