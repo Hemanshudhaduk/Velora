@@ -237,6 +237,7 @@ export default function ProductDetail() {
                 src={allImages[selectedImageIndex] || placeholderImage}
                 alt={product.productName}
                 className="w-full h-full object-cover"
+                loading="lazy" 
               />
               {product.isFeatured && (
                 <span className="absolute top-4 left-4 bg-amber-500 text-white text-xs px-3 py-1 rounded">
@@ -267,6 +268,7 @@ export default function ProductDetail() {
                       src={image || placeholderImage}
                       alt={`${product.productName} view ${index + 1}`}
                       className="w-full h-full object-cover"
+                      loading="lazy" 
                     />
                   </button>
                 ))}
