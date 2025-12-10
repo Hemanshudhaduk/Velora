@@ -1,50 +1,89 @@
 // src/pages/Cart.tsx
-import React, { useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Trash2, Plus, Minus, ShoppingBag, Home, ChevronRight } from 'lucide-react';
-import { useCart } from '@/contexts/CartContext';
-import Header from '@/components/Header';
-import Footer from '@/components/Footer';
-import { useToast } from '@/components/ui/use-toast';
+import React, { useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import {
+  Trash2,
+  Plus,
+  Minus,
+  ShoppingBag,
+  Home,
+  ChevronRight,
+} from "lucide-react";
+import { useCart } from "@/contexts/CartContext";
+import Header from "@/components/Header";
+import Footer from "@/components/Footer";
+import { useToast } from "@/components/ui/use-toast";
 
 export default function Cart() {
-  const { cartItems, cartCount, removeFromCart, updateCartQuantity } = useCart();
+  const {
+    cartItems,
+    cartCount,
+    removeFromCart,
+    updateCartQuantity,
+    updateCartQuantityLocal,
+    removeFromCartLocal,
+    restoreCartItems,
+  } = useCart();
+
   const navigate = useNavigate();
   const { toast } = useToast();
 
-
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
-  const handleQuantityChange = async (cartItemId: string, newQuantity: number, maxStock: number) => {
+  // ✅ Optimistic quantity change
+  const handleQuantityChange = (
+    cartItemId: string,
+    newQuantity: number,
+    maxStock: number
+  ) => {
     if (newQuantity < 1 || newQuantity > maxStock) return;
-    
-    try {
-      await updateCartQuantity(cartItemId, newQuantity);
-    } catch (error) {
+
+    // snapshot current items for rollback
+    const prevItems = [...cartItems];
+
+    // 1) optimistic UI update – instant response
+    updateCartQuantityLocal(cartItemId, newQuantity);
+
+    // 2) sync with backend in background
+    updateCartQuantity(cartItemId, newQuantity).catch(() => {
+      // 3) revert UI on error
+      restoreCartItems(prevItems);
+
       toast({
-        title: 'Error',
-        description: 'Failed to update quantity',
-        variant: 'destructive',
+        title: "Error",
+        description: "Failed to update quantity",
+        variant: "destructive",
       });
-    }
+    });
   };
 
-  const handleRemove = async (cartItemId: string, productName: string) => {
-    try {
-      await removeFromCart(cartItemId);
-      toast({
-        title: 'Removed',
-        description: `${productName} removed from cart`,
+  // ✅ Optimistic remove
+  const handleRemove = (cartItemId: string, productName: string) => {
+    const prevItems = [...cartItems];
+
+    // 1) optimistic UI update – remove immediately
+    removeFromCartLocal(cartItemId);
+
+    // 2) sync with backend
+    removeFromCart(cartItemId)
+      .then(() => {
+        toast({
+          title: "Removed",
+          description: `${productName} removed from cart`,
+        });
+      })
+      .catch(() => {
+        // 3) rollback on failure
+        restoreCartItems(prevItems);
+
+        toast({
+          title: "Error",
+          description: "Failed to remove item",
+          variant: "destructive",
+        });
       });
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to remove item',
-        variant: 'destructive',
-      });
-    }
   };
 
   const subtotal = cartItems.reduce(
@@ -59,7 +98,7 @@ export default function Cart() {
     return (
       <div className="min-h-screen flex flex-col bg-white">
         <Header />
-        
+
         <div className="flex-1 flex items-center justify-center py-16">
           <div className="text-center max-w-md px-4">
             <ShoppingBag size={80} className="mx-auto text-gray-300 mb-6" />
@@ -89,7 +128,10 @@ export default function Cart() {
       <div className="bg-white border-b">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center gap-2 text-sm text-gray-600">
-            <Link to="/" className="hover:text-gray-900 flex items-center gap-1">
+            <Link
+              to="/"
+              className="hover:text-gray-900 flex items-center gap-1"
+            >
               <Home size={16} /> Home
             </Link>
             <ChevronRight size={14} />
@@ -100,7 +142,8 @@ export default function Cart() {
 
       <div className="container mx-auto px-4 py-8 flex-1">
         <h1 className="text-3xl font-light mb-8">
-          Shopping Cart <span className="text-gray-500">({cartCount} items)</span>
+          Shopping Cart{" "}
+          <span className="text-gray-500">({cartCount} items)</span>
         </h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -112,9 +155,12 @@ export default function Cart() {
                 className="bg-white rounded-lg p-4 md:p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow"
               >
                 <div className="flex gap-4">
-                  <Link to={`/product/${item.productId}`} className="flex-shrink-0">
+                  <Link
+                    to={`/product/${item.productId}`}
+                    className="flex-shrink-0"
+                  >
                     <img
-                      src={item.mainImage || 'https://via.placeholder.com/150'}
+                      src={item.mainImage || "https://via.placeholder.com/150"}
                       alt={item.productName}
                       className="w-24 h-24 md:w-32 md:h-32 object-cover rounded-md border border-gray-200"
                     />
@@ -137,12 +183,20 @@ export default function Cart() {
                       </button>
                     </div>
 
-                    <p className="text-sm text-gray-600 mb-3">Size: {item.selectedSize}</p>
+                    <p className="text-sm text-gray-600 mb-3">
+                      Size: {item.selectedSize}
+                    </p>
 
                     <div className="flex items-center justify-between flex-wrap gap-4">
                       <div className="flex items-center gap-3 border border-gray-300 rounded-md">
                         <button
-                          onClick={() => handleQuantityChange(item.id, item.quantity - 1, item.availableStock)}
+                          onClick={() =>
+                            handleQuantityChange(
+                              item.id,
+                              item.quantity - 1,
+                              item.availableStock
+                            )
+                          }
                           disabled={item.quantity <= 1}
                           className="p-2 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
@@ -152,7 +206,13 @@ export default function Cart() {
                           {item.quantity}
                         </span>
                         <button
-                          onClick={() => handleQuantityChange(item.id, item.quantity + 1, item.availableStock)}
+                          onClick={() =>
+                            handleQuantityChange(
+                              item.id,
+                              item.quantity + 1,
+                              item.availableStock
+                            )
+                          }
                           disabled={item.quantity >= item.availableStock}
                           className="p-2 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
@@ -162,7 +222,8 @@ export default function Cart() {
 
                       <div className="text-right">
                         <p className="text-lg font-semibold text-amber-600">
-                          ₹{(item.currentPrice * item.quantity).toLocaleString()}
+                          ₹
+                          {(item.currentPrice * item.quantity).toLocaleString()}
                         </p>
                         <p className="text-xs text-gray-500">
                           ₹{item.currentPrice.toLocaleString()} each
@@ -172,7 +233,9 @@ export default function Cart() {
 
                     {!item.inStock && (
                       <div className="mt-3 bg-red-50 border border-red-200 rounded px-3 py-2">
-                        <p className="text-sm text-red-600 font-medium">Out of stock</p>
+                        <p className="text-sm text-red-600 font-medium">
+                          Out of stock
+                        </p>
                       </div>
                     )}
                     {item.quantity > item.availableStock && item.inStock && (
@@ -210,19 +273,22 @@ export default function Cart() {
                 </div>
                 {subtotal < 1000 && (
                   <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-3 py-2">
-                    Add ₹{(1000 - subtotal).toLocaleString()} more for FREE shipping!
+                    Add ₹{(1000 - subtotal).toLocaleString()} more for FREE
+                    shipping!
                   </p>
                 )}
                 <div className="border-t pt-3">
                   <div className="flex justify-between items-center text-lg font-semibold">
                     <span>Total</span>
-                    <span className="text-amber-600">₹{total.toLocaleString()}</span>
+                    <span className="text-amber-600">
+                      ₹{total.toLocaleString()}
+                    </span>
                   </div>
                 </div>
               </div>
 
               <button
-                onClick={() => navigate('/checkout')}
+                onClick={() => navigate("/checkout")}
                 className="w-full bg-amber-500 text-white py-3 rounded-lg font-medium hover:bg-amber-600 transition-colors shadow-md mb-3"
               >
                 Proceed to Checkout
