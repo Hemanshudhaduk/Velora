@@ -27,7 +27,7 @@ interface Subscription {
   product_image: string;
   product_sku: string;
   selected_size: string;
-  amount: number;
+  amount: string;
   billing_cycle: string;
   status: string;
   next_billing_date: string;
@@ -289,7 +289,7 @@ export default function MySubscriptions() {
 
                       <div className="text-right">
                         <p className="text-2xl font-bold text-purple-600">
-                          ₹{sub.amount.toLocaleString()}
+                          ₹{parseFloat(sub.amount).toLocaleString()}
                           <span className="text-sm font-normal text-gray-600">
                             /delivery
                           </span>
