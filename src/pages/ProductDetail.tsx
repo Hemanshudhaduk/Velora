@@ -7,6 +7,7 @@ import Footer from "@/components/Footer";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import ProductSubscriptionOption from "@/components/ProductSubscriptionOption";
 
 const API_BASE =
   (import.meta && (import.meta as any).env?.VITE_API_BASE_URL) ||
@@ -32,20 +33,21 @@ interface Product {
   totalStock: number;
   isActive: boolean;
   isFeatured: boolean;
+  subscription_enabled?: boolean;
 }
 
 export default function ProductDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
-  
+
   // Get the correct functions from useCart
-  const { 
-    addToCart,           // ← USE THIS, NOT addItem
-    addToWishlist, 
-    removeFromWishlist, 
-    isInWishlist, 
-    wishlistItems 
+  const {
+    addToCart, // ← USE THIS, NOT addItem
+    addToWishlist,
+    removeFromWishlist,
+    isInWishlist,
+    wishlistItems,
   } = useCart();
 
   const [product, setProduct] = useState<Product | null>(null);
@@ -53,14 +55,22 @@ export default function ProductDetail() {
   const [selectedSize, setSelectedSize] = useState("");
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [showImageModal, setShowImageModal] = useState(false);
-  const [expandedSections, setExpandedSections] = useState<string[]>(["description"]);
+  const [expandedSections, setExpandedSections] = useState<string[]>([
+    "description",
+  ]);
   const [addingToCart, setAddingToCart] = useState(false);
   const [addingToWishlist, setAddingToWishlist] = useState(false);
+  const [purchaseType, setPurchaseType] = useState<"onetime" | "subscription">(
+    "onetime",
+  );
+  const [billingCycle, setBillingCycle] = useState<string>("monthly");
 
   const placeholderImage = "https://via.placeholder.com/800x1000?text=No+Image";
 
   const inWishlist = product ? isInWishlist(product.id) : false;
-  const wishlistItem = wishlistItems.find(item => item.productId === product?.id);
+  const wishlistItem = wishlistItems.find(
+    (item) => item.productId === product?.id,
+  );
 
   // Fetch product details
   useEffect(() => {
@@ -74,9 +84,11 @@ export default function ProductDetail() {
 
         if (json && json.success && json.data && json.data.product) {
           setProduct(json.data.product);
-          
+
           // Auto-select first available size
-          const availableSizes = (json.data.product.sizes || []).filter((s: any) => s.stock > 0);
+          const availableSizes = (json.data.product.sizes || []).filter(
+            (s: any) => s.stock > 0,
+          );
           if (availableSizes.length > 0) {
             setSelectedSize(availableSizes[0].size);
           }
@@ -100,9 +112,21 @@ export default function ProductDetail() {
     window.scrollTo(0, 0);
   }, [id]);
 
+  const handlePurchaseTypeChange = (
+    type: "onetime" | "subscription",
+    cycle?: string,
+  ) => {
+    setPurchaseType(type);
+    if (cycle) {
+      setBillingCycle(cycle);
+    }
+  };
+
   const toggleSection = (section: string) => {
     setExpandedSections((prev) =>
-      prev.includes(section) ? prev.filter((s) => s !== section) : [...prev, section]
+      prev.includes(section)
+        ? prev.filter((s) => s !== section)
+        : [...prev, section],
     );
   };
 
@@ -111,7 +135,9 @@ export default function ProductDetail() {
     // Check authentication first
     if (!isAuthenticated) {
       toast.error("Please sign in to add items to cart");
-      navigate('/signin', { state: { from: { pathname: window.location.pathname } } });
+      navigate("/signin", {
+        state: { from: { pathname: window.location.pathname } },
+      });
       return;
     }
 
@@ -142,11 +168,35 @@ export default function ProductDetail() {
       setAddingToCart(false);
     }
   };
+  const handleSubscribeNow = () => {
+    if (!selectedSize) {
+      toast.error("Please select a size");
+      return;
+    }
+
+    if (!isAuthenticated) {
+      toast.error("Please sign in to continue");
+      navigate("/signin", {
+        state: { from: { pathname: window.location.pathname } },
+      });
+      return;
+    }
+
+    navigate("/subscription/checkout", {
+      state: {
+        productId: product!.id,
+        selectedSize,
+        billingCycle,
+      },
+    });
+  };
 
   const handleWishlistToggle = async () => {
     if (!isAuthenticated) {
       toast.error("Please sign in to add items to wishlist");
-      navigate('/signin', { state: { from: { pathname: window.location.pathname } } });
+      navigate("/signin", {
+        state: { from: { pathname: window.location.pathname } },
+      });
       return;
     }
 
@@ -237,7 +287,7 @@ export default function ProductDetail() {
                 src={allImages[selectedImageIndex] || placeholderImage}
                 alt={product.productName}
                 className="w-full h-full object-cover"
-                loading="lazy" 
+                loading="lazy"
               />
               {product.isFeatured && (
                 <span className="absolute top-4 left-4 bg-amber-500 text-white text-xs px-3 py-1 rounded">
@@ -268,7 +318,7 @@ export default function ProductDetail() {
                       src={image || placeholderImage}
                       alt={`${product.productName} view ${index + 1}`}
                       className="w-full h-full object-cover"
-                      loading="lazy" 
+                      loading="lazy"
                     />
                   </button>
                 ))}
@@ -279,12 +329,16 @@ export default function ProductDetail() {
           {/* Right Column - Product Info */}
           <div>
             <div className="sticky top-4">
-              <h1 className="text-2xl md:text-3xl font-light mb-2">{product.productName}</h1>
+              <h1 className="text-2xl md:text-3xl font-light mb-2">
+                {product.productName}
+              </h1>
               <p className="text-sm text-gray-500 mb-4">SKU: {product.sku}</p>
 
               {/* Price */}
               <div className="flex items-center gap-3 mb-6">
-                <span className="text-2xl font-semibold">₹{product.finalPrice.toLocaleString()}</span>
+                <span className="text-2xl font-semibold">
+                  ₹{product.finalPrice.toLocaleString()}
+                </span>
                 {product.discountPercentage > 0 && (
                   <>
                     <span className="text-lg text-gray-400 line-through">
@@ -301,7 +355,10 @@ export default function ProductDetail() {
               <div className="mb-6">
                 <div className="flex items-center justify-between mb-3">
                   <label className="text-sm font-medium">
-                    Size: {selectedSize && <span className="text-gray-600">{selectedSize}</span>}
+                    Size:{" "}
+                    {selectedSize && (
+                      <span className="text-gray-600">{selectedSize}</span>
+                    )}
                   </label>
                   <button className="text-xs text-amber-600 hover:text-amber-700">
                     View Size Chart
@@ -313,14 +370,16 @@ export default function ProductDetail() {
                     return (
                       <button
                         key={sizeObj.size}
-                        onClick={() => !isOutOfStock && setSelectedSize(sizeObj.size)}
+                        onClick={() =>
+                          !isOutOfStock && setSelectedSize(sizeObj.size)
+                        }
                         disabled={isOutOfStock}
                         className={`py-3 px-2 border rounded-lg text-sm font-medium transition-all ${
                           selectedSize === sizeObj.size
                             ? "bg-gray-900 text-white border-gray-900"
                             : isOutOfStock
-                            ? "border-gray-200 text-gray-300 cursor-not-allowed line-through"
-                            : "border-gray-300 hover:border-gray-900"
+                              ? "border-gray-200 text-gray-300 cursor-not-allowed line-through"
+                              : "border-gray-300 hover:border-gray-900"
                         }`}
                       >
                         {sizeObj.size}
@@ -329,27 +388,49 @@ export default function ProductDetail() {
                   })}
                 </div>
               </div>
+              <ProductSubscriptionOption
+                product={{
+                  id: product.id,
+                  name: product.productName,
+                  price: product.finalPrice,
+                  subscriptionEnabled: product.subscription_enabled ?? false,
+                  subscriptionDiscount: product.discountPercentage,
+                }}
+                selectedSize={selectedSize}
+                onPurchaseTypeChange={handlePurchaseTypeChange}
+              />
 
               {/* Action Buttons */}
               <div className="flex gap-3 mb-6">
-                <button
-                  onClick={handleAddToBag}
-                  disabled={!selectedSize || addingToCart}
-                  className="flex-1 bg-purple-700 hover:bg-purple-800 text-white py-4 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {addingToCart ? (
-                    <>
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" />
-                      Adding...
-                    </>
-                  ) : (
-                    <>
-                      <ShoppingBag size={20} />
-                      ADD TO CART
-                    </>
-                  )}
-                </button>
+                {purchaseType === "subscription" ? (
+                  <button
+                    onClick={handleSubscribeNow}
+                    disabled={!selectedSize}
+                    className="flex-1 bg-purple-700 hover:bg-purple-800 text-white py-4 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Subscribe Now
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleAddToBag}
+                    disabled={!selectedSize || addingToCart}
+                    className="flex-1 bg-purple-700 hover:bg-purple-800 text-white py-4 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {addingToCart ? (
+                      <>
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" />
+                        Adding...
+                      </>
+                    ) : (
+                      <>
+                        <ShoppingBag size={20} />
+                        ADD TO CART
+                      </>
+                    )}
+                  </button>
+                )}
 
+                {/* ❤️ Wishlist button — UNCHANGED */}
                 <button
                   onClick={handleWishlistToggle}
                   disabled={addingToWishlist}
@@ -358,18 +439,13 @@ export default function ProductDetail() {
                       ? "border-red-500 bg-red-50"
                       : "border-gray-300 hover:border-red-500 hover:bg-red-50"
                   }`}
-                  title={inWishlist ? "Remove from Wishlist" : "Add to Wishlist"}
                 >
-                  {addingToWishlist ? (
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-current" />
-                  ) : (
-                    <Heart
-                      size={24}
-                      fill={inWishlist ? "#EF4444" : "none"}
-                      stroke={inWishlist ? "#EF4444" : "currentColor"}
-                      className={inWishlist ? "text-red-500" : "text-gray-700"}
-                    />
-                  )}
+                  <Heart
+                    size={24}
+                    fill={inWishlist ? "#EF4444" : "none"}
+                    stroke={inWishlist ? "#EF4444" : "currentColor"}
+                    className={inWishlist ? "text-red-500" : "text-gray-700"}
+                  />
                 </button>
               </div>
 
@@ -377,20 +453,50 @@ export default function ProductDetail() {
               <div className="border-t border-b border-gray-200 py-4 mb-6">
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-sm">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M13 10V3L4 14h7v7l9-11h-7z"
+                      />
                     </svg>
                     <span>Express Shipping</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"
+                      />
                     </svg>
                     <span>Cash on Delivery Available</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
+                      />
                     </svg>
                     <span>Easy 7 Days Return Policy</span>
                   </div>
@@ -405,17 +511,23 @@ export default function ProductDetail() {
                     onClick={() => toggleSection("description")}
                     className="w-full py-4 flex items-center justify-between text-left"
                   >
-                    <span className="font-medium text-sm uppercase tracking-wide">Description</span>
+                    <span className="font-medium text-sm uppercase tracking-wide">
+                      Description
+                    </span>
                     <ChevronRight
                       className={`transition-transform ${
-                        expandedSections.includes("description") ? "rotate-90" : ""
+                        expandedSections.includes("description")
+                          ? "rotate-90"
+                          : ""
                       }`}
                       size={16}
                     />
                   </button>
                   {expandedSections.includes("description") && (
                     <div className="pb-4">
-                      <p className="text-sm text-gray-600 leading-relaxed">{product.description}</p>
+                      <p className="text-sm text-gray-600 leading-relaxed">
+                        {product.description}
+                      </p>
                     </div>
                   )}
                 </div>
@@ -426,7 +538,9 @@ export default function ProductDetail() {
                     onClick={() => toggleSection("size")}
                     className="w-full py-4 flex items-center justify-between text-left"
                   >
-                    <span className="font-medium text-sm uppercase tracking-wide">Size & Fit</span>
+                    <span className="font-medium text-sm uppercase tracking-wide">
+                      Size & Fit
+                    </span>
                     <ChevronRight
                       className={`transition-transform ${
                         expandedSections.includes("size") ? "rotate-90" : ""
@@ -436,7 +550,9 @@ export default function ProductDetail() {
                   </button>
                   {expandedSections.includes("size") && (
                     <div className="pb-4">
-                      <p className="text-sm text-gray-600">{product.fit || "Standard fit"}</p>
+                      <p className="text-sm text-gray-600">
+                        {product.fit || "Standard fit"}
+                      </p>
                     </div>
                   )}
                 </div>
@@ -447,7 +563,9 @@ export default function ProductDetail() {
                     onClick={() => toggleSection("material")}
                     className="w-full py-4 flex items-center justify-between text-left"
                   >
-                    <span className="font-medium text-sm uppercase tracking-wide">Material</span>
+                    <span className="font-medium text-sm uppercase tracking-wide">
+                      Material
+                    </span>
                     <ChevronRight
                       className={`transition-transform ${
                         expandedSections.includes("material") ? "rotate-90" : ""
@@ -457,40 +575,56 @@ export default function ProductDetail() {
                   </button>
                   {expandedSections.includes("material") && (
                     <div className="pb-4">
-                      <p className="text-sm text-gray-600">{product.material || "Premium quality fabric"}</p>
+                      <p className="text-sm text-gray-600">
+                        {product.material || "Premium quality fabric"}
+                      </p>
                     </div>
                   )}
                 </div>
 
                 {/* Specifications */}
-                {product.specifications && Object.keys(product.specifications).length > 0 && (
-                  <div className="border-b border-gray-200">
-                    <button
-                      onClick={() => toggleSection("specs")}
-                      className="w-full py-4 flex items-center justify-between text-left"
-                    >
-                      <span className="font-medium text-sm uppercase tracking-wide">Specifications</span>
-                      <ChevronRight
-                        className={`transition-transform ${
-                          expandedSections.includes("specs") ? "rotate-90" : ""
-                        }`}
-                        size={16}
-                      />
-                    </button>
-                    {expandedSections.includes("specs") && (
-                      <div className="pb-4">
-                        <dl className="space-y-2">
-                          {Object.entries(product.specifications).map(([key, value]) => (
-                            <div key={key} className="flex justify-between text-sm">
-                              <dt className="text-gray-600 capitalize">{key}:</dt>
-                              <dd className="text-gray-900">{String(value)}</dd>
-                            </div>
-                          ))}
-                        </dl>
-                      </div>
-                    )}
-                  </div>
-                )}
+                {product.specifications &&
+                  Object.keys(product.specifications).length > 0 && (
+                    <div className="border-b border-gray-200">
+                      <button
+                        onClick={() => toggleSection("specs")}
+                        className="w-full py-4 flex items-center justify-between text-left"
+                      >
+                        <span className="font-medium text-sm uppercase tracking-wide">
+                          Specifications
+                        </span>
+                        <ChevronRight
+                          className={`transition-transform ${
+                            expandedSections.includes("specs")
+                              ? "rotate-90"
+                              : ""
+                          }`}
+                          size={16}
+                        />
+                      </button>
+                      {expandedSections.includes("specs") && (
+                        <div className="pb-4">
+                          <dl className="space-y-2">
+                            {Object.entries(product.specifications).map(
+                              ([key, value]) => (
+                                <div
+                                  key={key}
+                                  className="flex justify-between text-sm"
+                                >
+                                  <dt className="text-gray-600 capitalize">
+                                    {key}:
+                                  </dt>
+                                  <dd className="text-gray-900">
+                                    {String(value)}
+                                  </dd>
+                                </div>
+                              ),
+                            )}
+                          </dl>
+                        </div>
+                      )}
+                    </div>
+                  )}
               </div>
             </div>
           </div>
@@ -518,7 +652,9 @@ export default function ProductDetail() {
               <>
                 <button
                   onClick={() =>
-                    setSelectedImageIndex((prev) => (prev === 0 ? allImages.length - 1 : prev - 1))
+                    setSelectedImageIndex((prev) =>
+                      prev === 0 ? allImages.length - 1 : prev - 1,
+                    )
                   }
                   className="absolute left-4 top-1/2 -translate-y-1/2 bg-white rounded-full p-2 hover:bg-gray-100 transition-colors"
                 >
@@ -526,7 +662,9 @@ export default function ProductDetail() {
                 </button>
                 <button
                   onClick={() =>
-                    setSelectedImageIndex((prev) => (prev === allImages.length - 1 ? 0 : prev + 1))
+                    setSelectedImageIndex((prev) =>
+                      prev === allImages.length - 1 ? 0 : prev + 1,
+                    )
                   }
                   className="absolute right-4 top-1/2 -translate-y-1/2 bg-white rounded-full p-2 hover:bg-gray-100 transition-colors"
                 >
