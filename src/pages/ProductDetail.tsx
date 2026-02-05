@@ -393,7 +393,7 @@ export default function ProductDetail() {
                   id: product.id,
                   name: product.productName,
                   price: product.finalPrice,
-                  subscriptionEnabled: product.subscription_enabled ?? false,
+                  subscriptionEnabled: product.subscription_enabled ?? true,
                   subscriptionDiscount: product.discountPercentage,
                 }}
                 selectedSize={selectedSize}
