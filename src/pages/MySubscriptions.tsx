@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { RefreshCw } from "lucide-react";
 import {
   Package,
   Calendar,
@@ -176,6 +177,36 @@ export default function MySubscriptions() {
     } catch (error) {
       console.error("Resume subscription error:", error);
       toast.error("Failed to resume subscription");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleSyncStatus = async (subscriptionId: string) => {
+    try {
+      setActionLoading(subscriptionId);
+      const response = await fetch(
+        `${API_BASE}/api/subscription/${subscriptionId}/sync`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${getToken()}`,
+            "Content-Type": "application/json",
+          },
+        },
+      );
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success("Subscription status updated");
+        fetchSubscriptions();
+      } else {
+        toast.error(data.message || "Failed to sync status");
+      }
+    } catch (error) {
+      console.error("Sync status error:", error);
+      toast.error("Failed to sync status");
     } finally {
       setActionLoading(null);
     }
@@ -391,8 +422,20 @@ export default function MySubscriptions() {
                       )}
 
                       {sub.status === "created" && (
-                        <div className="text-sm text-blue-600 bg-blue-50 px-4 py-2 rounded-lg">
-                          ⏳ Pending first payment
+                        <div className="flex gap-3">
+                          <div className="text-sm text-blue-600 bg-blue-50 px-4 py-2 rounded-lg">
+                            ⏳ Pending first payment
+                          </div>
+                          <button
+                            onClick={() => handleSyncStatus(sub.id)}
+                            disabled={actionLoading === sub.id}
+                            className="flex items-center gap-2 px-4 py-2 border border-blue-300 text-blue-600 rounded-lg hover:bg-blue-50 text-sm font-medium transition-colors disabled:opacity-50"
+                          >
+                            <RefreshCw size={16} />
+                            {actionLoading === sub.id
+                              ? "Checking..."
+                              : "Check Status"}
+                          </button>
                         </div>
                       )}
 
