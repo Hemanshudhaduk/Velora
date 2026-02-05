@@ -25,10 +25,10 @@ interface Address {
 
 interface Product {
   id: string;
-  product_name: string;
-  main_image: string;
-  final_price: number;
-  subscription_discount_percentage: number;
+  productName: string;
+  mainImage: string;
+  finalPrice: number;
+  discountPercentage: number;
 }
 
 declare global {
@@ -206,7 +206,7 @@ export default function SubscriptionCheckout() {
         key: razorpay.keyId,
         subscription_id: razorpay.subscriptionId,
         name: 'Velora',
-        description: `${product.product_name} - ${billingCycle || 'Monthly'} Subscription`,
+        description: `${product.productName} - ${billingCycle || 'Monthly'} Subscription`,
         theme: {
           color: '#7C3AED'
         },
@@ -291,8 +291,8 @@ export default function SubscriptionCheckout() {
     );
   }
 
-  const subscriptionPrice = product.final_price * (1 - (product.subscription_discount_percentage || 5) / 100);
-  const savings = product.final_price - subscriptionPrice;
+  const subscriptionPrice = product.finalPrice * (1 - (product.discountPercentage || 5) / 100);
+  const savings = product.finalPrice - subscriptionPrice;
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
@@ -316,7 +316,7 @@ export default function SubscriptionCheckout() {
       <div className="container mx-auto px-4 py-8 flex-1">
         <h1 className="text-2xl md:text-3xl font-light mb-2">Subscribe & Save</h1>
         <p className="text-gray-600 mb-8">
-          Get this product delivered automatically and save {product.subscription_discount_percentage || 5}%
+          Get this product delivered automatically and save {product.discountPercentage || 5}%
         </p>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -458,12 +458,12 @@ export default function SubscriptionCheckout() {
               {/* Product */}
               <div className="flex gap-3 mb-4 pb-4 border-b">
                 <img
-                  src={product.main_image || 'https://via.placeholder.com/80'}
-                  alt={product.product_name}
+                  src={product.mainImage || 'https://via.placeholder.com/80'}
+                  alt={product.productName}
                   className="w-20 h-20 object-cover rounded"
                 />
                 <div className="flex-1">
-                  <p className="font-medium line-clamp-2 text-sm">{product.product_name}</p>
+                  <p className="font-medium line-clamp-2 text-sm">{product.productName}</p>
                   <p className="text-gray-500 text-xs mt-1">Size: {selectedSize}</p>
                   <p className="text-purple-600 font-semibold mt-1">
                     ₹{subscriptionPrice.toFixed(0)}/delivery
@@ -475,11 +475,11 @@ export default function SubscriptionCheckout() {
               <div className="space-y-2 mb-4">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Regular Price</span>
-                  <span className="line-through">₹{product.final_price}</span>
+                  <span className="line-through">₹{product.finalPrice}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-green-600 font-medium">
-                    Subscription Discount ({product.subscription_discount_percentage || 5}%)
+                    Subscription Discount ({product.discountPercentage || 5}%)
                   </span>
                   <span className="text-green-600 font-medium">-₹{savings.toFixed(0)}</span>
                 </div>
