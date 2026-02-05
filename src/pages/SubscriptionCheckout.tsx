@@ -101,12 +101,11 @@ export default function SubscriptionCheckout() {
       const data = await response.json();
       
       console.log('Product response:', data);
-      console.log('Product data:', data.data);
-      console.log('Product details:', data.data?.product);
+      console.log('Product data:', data.product);
 
-      if (data.success && data.data?.product) {
-        console.log('Product set:', data.data.product);
-        setProduct(data.data.product);
+      if (data.success && data.product) {
+        setProduct(data.product);
+        console.log('Product set:', data.product);
       } else {
         toast.error('Product not found');
         navigate('/');
