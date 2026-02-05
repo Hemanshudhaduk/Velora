@@ -131,13 +131,13 @@ export default function SubscriptionCheckout() {
       const data = await response.json();
       
       if (data.success) {
-        setAddresses(data.data.addresses);
+        setAddresses(data.addresses);
         
-        const defaultAddr = data.data.addresses.find((a: Address) => a.is_default);
+        const defaultAddr = data.addresses.find((a: Address) => a.is_default);
         if (defaultAddr) {
           setSelectedAddressId(defaultAddr.id);
-        } else if (data.data.addresses.length > 0) {
-          setSelectedAddressId(data.data.addresses[0].id);
+        } else if (data?.addresses.length > 0) {
+          setSelectedAddressId(data?.addresses[0].id);
         }
       }
     } catch (error) {
