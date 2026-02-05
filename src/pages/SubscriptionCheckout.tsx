@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation , Link} from 'react-router-dom';
-import { Home, ChevronRight, MapPin, Plus, Check, CreditCard, Calendar } from 'lucide-react';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { Home, ChevronRight, MapPin, Plus, Check, Calendar } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -40,8 +40,9 @@ declare global {
 export default function SubscriptionCheckout() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isAuthenticated, getToken, user } = useAuth();
+  const { isAuthenticated, getToken } = useAuth();
 
+  // FIXED: Get state with defaults
   const { productId, selectedSize, billingCycle } = location.state || {};
 
   const [product, setProduct] = useState<Product | null>(null);
@@ -49,24 +50,34 @@ export default function SubscriptionCheckout() {
   const [selectedAddressId, setSelectedAddressId] = useState<string>('');
   const [customerNotes, setCustomerNotes] = useState('');
   const [loading, setLoading] = useState(false);
+  const [pageLoading, setPageLoading] = useState(true);
   const [addressModalOpen, setAddressModalOpen] = useState(false);
 
   useEffect(() => {
+    console.log('SubscriptionCheckout state:', { productId, selectedSize, billingCycle });
+
     if (!isAuthenticated) {
       navigate('/signin', { state: { from: '/subscription/checkout' } });
       return;
     }
 
-    if (!productId || !selectedSize) {
-      toast.error('Invalid subscription request');
+    // FIXED: Better validation
+    if (!productId) {
+      toast.error('No product selected for subscription');
       navigate('/');
+      return;
+    }
+
+    if (!selectedSize) {
+      toast.error('Please select a size');
+      navigate(`/product/${productId}`);
       return;
     }
 
     fetchProduct();
     fetchAddresses();
     loadRazorpayScript();
-  }, [isAuthenticated, productId]);
+  }, [isAuthenticated, productId, selectedSize]);
 
   const loadRazorpayScript = () => {
     return new Promise((resolve) => {
@@ -84,15 +95,25 @@ export default function SubscriptionCheckout() {
 
   const fetchProduct = async () => {
     try {
+      console.log('Fetching product:', productId);
+      
       const response = await fetch(`${API_BASE}/api/product/${productId}`);
       const data = await response.json();
       
-      if (data.success) {
+      console.log('Product response:', data);
+
+      if (data.success && data.data.product) {
         setProduct(data.data.product);
+      } else {
+        toast.error('Product not found');
+        navigate('/');
       }
     } catch (error) {
       console.error('Error fetching product:', error);
       toast.error('Failed to load product details');
+      navigate('/');
+    } finally {
+      setPageLoading(false);
     }
   };
 
@@ -129,15 +150,22 @@ export default function SubscriptionCheckout() {
       return;
     }
 
-    if (!product) {
-      toast.error('Product details not loaded');
+    if (!product || !selectedSize) {
+      toast.error('Missing product or size information');
       return;
     }
 
     setLoading(true);
 
     try {
-      // Create subscription
+      console.log('Creating subscription with:', {
+        productId: product.id,
+        selectedSize,
+        shippingAddressId: selectedAddressId,
+        billingCycle: billingCycle || 'monthly'
+      });
+
+      // Step 1: Create subscription
       const subscriptionResponse = await fetch(`${API_BASE}/api/subscription/create`, {
         method: 'POST',
         headers: {
@@ -156,28 +184,35 @@ export default function SubscriptionCheckout() {
 
       const subscriptionData = await subscriptionResponse.json();
 
+      console.log('Subscription create response:', subscriptionData);
+
       if (!subscriptionData.success) {
         throw new Error(subscriptionData.message || 'Failed to create subscription');
       }
 
       const { razorpay } = subscriptionData.data;
 
-      // Check if Razorpay is loaded
+      if (!razorpay || !razorpay.subscriptionId) {
+        throw new Error('Invalid subscription data received');
+      }
+
+      // Step 2: Check if Razorpay is loaded
       if (typeof window.Razorpay === 'undefined') {
         throw new Error('Payment gateway not available. Please refresh the page.');
       }
 
-      // Razorpay checkout options
+      // Step 3: Open Razorpay checkout
       const options = {
         key: razorpay.keyId,
         subscription_id: razorpay.subscriptionId,
         name: 'Velora',
-        description: `${product.product_name} - ${billingCycle} Subscription`,
+        description: `${product.product_name} - ${billingCycle || 'Monthly'} Subscription`,
         theme: {
           color: '#7C3AED'
         },
         handler: async function (response: any) {
           try {
+            console.log('Payment response:', response);
             setLoading(true);
             
             // Verify subscription payment
@@ -196,14 +231,16 @@ export default function SubscriptionCheckout() {
 
             const verifyData = await verifyResponse.json();
 
+            console.log('Verify response:', verifyData);
+
             if (verifyData.success) {
               toast.success('Subscription activated successfully!');
               navigate('/subscriptions');
             } else {
-              throw new Error('Subscription verification failed');
+              throw new Error(verifyData.message || 'Subscription verification failed');
             }
           } catch (error: any) {
-            toast.error('Subscription verification failed');
+            toast.error(error.message || 'Subscription verification failed');
             console.error('Verification error:', error);
           } finally {
             setLoading(false);
@@ -227,11 +264,34 @@ export default function SubscriptionCheckout() {
     }
   };
 
-  if (!product) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  if (pageLoading) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600" />
+        </div>
+        <Footer />
+      </div>
+    );
   }
 
-  const subscriptionPrice = product.final_price * (1 - product.subscription_discount_percentage / 100);
+  if (!product) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-gray-500 mb-4">Product not found</p>
+            <Link to="/" className="text-purple-600 hover:underline">← Back to Home</Link>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  const subscriptionPrice = product.final_price * (1 - (product.subscription_discount_percentage || 5) / 100);
   const savings = product.final_price - subscriptionPrice;
 
   return (
@@ -243,8 +303,8 @@ export default function SubscriptionCheckout() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <Link to="/" className="hover:text-gray-900 flex items-center gap-1">
-                        <Home size={16} /> Home
-                      </Link>
+              <Home size={16} /> Home
+            </Link>
             <ChevronRight size={14} />
             <span>Products</span>
             <ChevronRight size={14} />
@@ -255,7 +315,9 @@ export default function SubscriptionCheckout() {
 
       <div className="container mx-auto px-4 py-8 flex-1">
         <h1 className="text-2xl md:text-3xl font-light mb-2">Subscribe & Save</h1>
-        <p className="text-gray-600 mb-8">Get this product delivered automatically and save {product.subscription_discount_percentage}%</p>
+        <p className="text-gray-600 mb-8">
+          Get this product delivered automatically and save {product.subscription_discount_percentage || 5}%
+        </p>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content */}
@@ -347,7 +409,7 @@ export default function SubscriptionCheckout() {
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Billing Cycle:</span>
-                  <span className="font-medium capitalize">{billingCycle}</span>
+                  <span className="font-medium capitalize">{billingCycle || 'Monthly'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Selected Size:</span>
@@ -360,7 +422,9 @@ export default function SubscriptionCheckout() {
                 <div className="flex justify-between">
                   <span className="text-gray-600">Next Billing:</span>
                   <span className="font-medium">
-                    {new Date(Date.now() + (billingCycle === 'monthly' ? 30 : 90) * 24 * 60 * 60 * 1000).toLocaleDateString()}
+                    {new Date(
+                      Date.now() + ((billingCycle === 'monthly' ? 30 : billingCycle === 'quarterly' ? 90 : 365) * 24 * 60 * 60 * 1000)
+                    ).toLocaleDateString()}
                   </span>
                 </div>
               </div>
@@ -394,7 +458,7 @@ export default function SubscriptionCheckout() {
               {/* Product */}
               <div className="flex gap-3 mb-4 pb-4 border-b">
                 <img
-                  src={product.main_image}
+                  src={product.main_image || 'https://via.placeholder.com/80'}
                   alt={product.product_name}
                   className="w-20 h-20 object-cover rounded"
                 />
@@ -414,7 +478,9 @@ export default function SubscriptionCheckout() {
                   <span className="line-through">₹{product.final_price}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-green-600 font-medium">Subscription Discount ({product.subscription_discount_percentage}%)</span>
+                  <span className="text-green-600 font-medium">
+                    Subscription Discount ({product.subscription_discount_percentage || 5}%)
+                  </span>
                   <span className="text-green-600 font-medium">-₹{savings.toFixed(0)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
