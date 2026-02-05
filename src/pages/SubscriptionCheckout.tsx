@@ -104,6 +104,7 @@ export default function SubscriptionCheckout() {
 
       if (data.success && data.product) {
         setProduct(data.product);
+        console.log('Product set:', data.product);
       } else {
         toast.error('Product not found');
         navigate('/');
