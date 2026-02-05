@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation , Link} from 'react-router-dom';
 import { Home, ChevronRight, MapPin, Plus, Check, CreditCard, Calendar } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import Header from '@/components/Header';
@@ -242,7 +242,9 @@ export default function SubscriptionCheckout() {
       <div className="bg-white border-b">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center gap-2 text-sm text-gray-600">
-            <Home size={16} />
+            <Link to="/" className="hover:text-gray-900 flex items-center gap-1">
+                        <Home size={16} /> Home
+                      </Link>
             <ChevronRight size={14} />
             <span>Products</span>
             <ChevronRight size={14} />
