@@ -1,22 +1,13 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate, useLocation, Link } from "react-router-dom";
-import {
-  Home,
-  ChevronRight,
-  MapPin,
-  Plus,
-  Check,
-  Calendar,
-} from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
-import Header from "@/components/Header";
-import Footer from "@/components/Footer";
-import { toast } from "sonner";
-import AddressModal from "@/components/AddressModal";
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { Home, ChevronRight, MapPin, Plus, Check, Calendar } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import Header from '@/components/Header';
+import Footer from '@/components/Footer';
+import { toast } from 'sonner';
+import AddressModal from '@/components/AddressModal';
 
-const API_BASE =
-  import.meta.env.VITE_API_BASE_URL ||
-  "https://clothing-store-server.vercel.app";
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://clothing-store-server.vercel.app';
 
 interface Address {
   id: string;
@@ -34,10 +25,10 @@ interface Address {
 
 interface Product {
   id: string;
-  productName: string;
-  mainImage: string;
-  finalPrice: number;
-  discountPercentage: number;
+  product_name: string;
+  main_image: string;
+  final_price: number;
+  subscription_discount_percentage: number;
 }
 
 declare global {
@@ -56,33 +47,29 @@ export default function SubscriptionCheckout() {
 
   const [product, setProduct] = useState<Product | null>(null);
   const [addresses, setAddresses] = useState<Address[]>([]);
-  const [selectedAddressId, setSelectedAddressId] = useState<string>("");
-  const [customerNotes, setCustomerNotes] = useState("");
+  const [selectedAddressId, setSelectedAddressId] = useState<string>('');
+  const [customerNotes, setCustomerNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
   const [addressModalOpen, setAddressModalOpen] = useState(false);
 
   useEffect(() => {
-    console.log("SubscriptionCheckout state:", {
-      productId,
-      selectedSize,
-      billingCycle,
-    });
+    console.log('SubscriptionCheckout state:', { productId, selectedSize, billingCycle });
 
     if (!isAuthenticated) {
-      navigate("/signin", { state: { from: "/subscription/checkout" } });
+      navigate('/signin', { state: { from: '/subscription/checkout' } });
       return;
     }
 
     // FIXED: Better validation
     if (!productId) {
-      toast.error("No product selected for subscription");
-      navigate("/");
+      toast.error('No product selected for subscription');
+      navigate('/');
       return;
     }
 
     if (!selectedSize) {
-      toast.error("Please select a size");
+      toast.error('Please select a size');
       navigate(`/product/${productId}`);
       return;
     }
@@ -94,16 +81,12 @@ export default function SubscriptionCheckout() {
 
   const loadRazorpayScript = () => {
     return new Promise((resolve) => {
-      if (
-        document.querySelector(
-          'script[src="https://checkout.razorpay.com/v1/checkout.js"]',
-        )
-      ) {
+      if (document.querySelector('script[src="https://checkout.razorpay.com/v1/checkout.js"]')) {
         resolve(true);
         return;
       }
-      const script = document.createElement("script");
-      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
       script.onload = () => resolve(true);
       script.onerror = () => resolve(false);
       document.body.appendChild(script);
@@ -112,35 +95,23 @@ export default function SubscriptionCheckout() {
 
   const fetchProduct = async () => {
     try {
-      console.log("Fetching product:", productId);
-
+      console.log('Fetching product:', productId);
+      
       const response = await fetch(`${API_BASE}/api/product/${productId}`);
       const data = await response.json();
+      
+      console.log('Product response:', data);
 
-      console.log("Product response:", data);
-      console.log("Product data:", data?.data?.product);
-
-      // ✅ FIX IS HERE
-      if (data.success && data.data && data.data.product) {
-        const fetchedProduct = data.data.product;
-
-        setProduct({
-          id: fetchedProduct.id,
-          productName: fetchedProduct.productName,
-          mainImage: fetchedProduct.mainImage,
-          finalPrice: fetchedProduct.finalPrice,
-          discountPercentage: fetchedProduct.discountPercentage ?? 0,
-        });
-
-        console.log("Product set:", fetchedProduct);
+      if (data.success && data.data.product) {
+        setProduct(data.data.product);
       } else {
-        toast.error("Product not found");
-        navigate("/");
+        toast.error('Product not found');
+        navigate('/');
       }
     } catch (error) {
-      console.error("Error fetching product:", error);
-      toast.error("Failed to load product details");
-      navigate("/");
+      console.error('Error fetching product:', error);
+      toast.error('Failed to load product details');
+      navigate('/');
     } finally {
       setPageLoading(false);
     }
@@ -150,19 +121,17 @@ export default function SubscriptionCheckout() {
     try {
       const response = await fetch(`${API_BASE}/api/address/list`, {
         headers: {
-          Authorization: `Bearer ${getToken()}`,
-          "Content-Type": "application/json",
-        },
+          'Authorization': `Bearer ${getToken()}`,
+          'Content-Type': 'application/json'
+        }
       });
 
       const data = await response.json();
-
+      
       if (data.success) {
         setAddresses(data.data.addresses);
-
-        const defaultAddr = data.data.addresses.find(
-          (a: Address) => a.is_default,
-        );
+        
+        const defaultAddr = data.data.addresses.find((a: Address) => a.is_default);
         if (defaultAddr) {
           setSelectedAddressId(defaultAddr.id);
         } else if (data.data.addresses.length > 0) {
@@ -170,138 +139,127 @@ export default function SubscriptionCheckout() {
         }
       }
     } catch (error) {
-      console.error("Error fetching addresses:", error);
-      toast.error("Failed to load addresses");
+      console.error('Error fetching addresses:', error);
+      toast.error('Failed to load addresses');
     }
   };
 
   const handleSubscribe = async () => {
     if (!selectedAddressId) {
-      toast.error("Please select a delivery address");
+      toast.error('Please select a delivery address');
       return;
     }
 
     if (!product || !selectedSize) {
-      toast.error("Missing product or size information");
+      toast.error('Missing product or size information');
       return;
     }
 
     setLoading(true);
 
     try {
-      console.log("Creating subscription with:", {
+      console.log('Creating subscription with:', {
         productId: product.id,
         selectedSize,
         shippingAddressId: selectedAddressId,
-        billingCycle: billingCycle || "monthly",
+        billingCycle: billingCycle || 'monthly'
       });
 
       // Step 1: Create subscription
-      const subscriptionResponse = await fetch(
-        `${API_BASE}/api/subscription/create`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${getToken()}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            productId: product.id,
-            selectedSize: selectedSize,
-            shippingAddressId: selectedAddressId,
-            billingAddressId: selectedAddressId,
-            billingCycle: billingCycle || "monthly",
-            customerNotes: customerNotes,
-          }),
+      const subscriptionResponse = await fetch(`${API_BASE}/api/subscription/create`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${getToken()}`,
+          'Content-Type': 'application/json'
         },
-      );
+        body: JSON.stringify({
+          productId: product.id,
+          selectedSize: selectedSize,
+          shippingAddressId: selectedAddressId,
+          billingAddressId: selectedAddressId,
+          billingCycle: billingCycle || 'monthly',
+          customerNotes: customerNotes
+        })
+      });
 
       const subscriptionData = await subscriptionResponse.json();
 
-      console.log("Subscription create response:", subscriptionData);
+      console.log('Subscription create response:', subscriptionData);
 
       if (!subscriptionData.success) {
-        throw new Error(
-          subscriptionData.message || "Failed to create subscription",
-        );
+        throw new Error(subscriptionData.message || 'Failed to create subscription');
       }
 
       const { razorpay } = subscriptionData.data;
 
       if (!razorpay || !razorpay.subscriptionId) {
-        throw new Error("Invalid subscription data received");
+        throw new Error('Invalid subscription data received');
       }
 
       // Step 2: Check if Razorpay is loaded
-      if (typeof window.Razorpay === "undefined") {
-        throw new Error(
-          "Payment gateway not available. Please refresh the page.",
-        );
+      if (typeof window.Razorpay === 'undefined') {
+        throw new Error('Payment gateway not available. Please refresh the page.');
       }
 
       // Step 3: Open Razorpay checkout
       const options = {
         key: razorpay.keyId,
         subscription_id: razorpay.subscriptionId,
-        name: "Velora",
-        description: `${product.productName} - ${billingCycle || "Monthly"} Subscription`,
+        name: 'Velora',
+        description: `${product.product_name} - ${billingCycle || 'Monthly'} Subscription`,
         theme: {
-          color: "#7C3AED",
+          color: '#7C3AED'
         },
         handler: async function (response: any) {
           try {
-            console.log("Payment response:", response);
+            console.log('Payment response:', response);
             setLoading(true);
-
+            
             // Verify subscription payment
-            const verifyResponse = await fetch(
-              `${API_BASE}/api/subscription/verify-payment`,
-              {
-                method: "POST",
-                headers: {
-                  Authorization: `Bearer ${getToken()}`,
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  razorpaySubscriptionId: response.razorpay_subscription_id,
-                  razorpayPaymentId: response.razorpay_payment_id,
-                  razorpaySignature: response.razorpay_signature,
-                }),
+            const verifyResponse = await fetch(`${API_BASE}/api/subscription/verify-payment`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${getToken()}`,
+                'Content-Type': 'application/json'
               },
-            );
+              body: JSON.stringify({
+                razorpaySubscriptionId: response.razorpay_subscription_id,
+                razorpayPaymentId: response.razorpay_payment_id,
+                razorpaySignature: response.razorpay_signature
+              })
+            });
 
             const verifyData = await verifyResponse.json();
 
-            console.log("Verify response:", verifyData);
+            console.log('Verify response:', verifyData);
 
             if (verifyData.success) {
-              toast.success("Subscription activated successfully!");
-              navigate("/subscriptions");
+              toast.success('Subscription activated successfully!');
+              navigate('/subscriptions');
             } else {
-              throw new Error(
-                verifyData.message || "Subscription verification failed",
-              );
+              throw new Error(verifyData.message || 'Subscription verification failed');
             }
           } catch (error: any) {
-            toast.error(error.message || "Subscription verification failed");
-            console.error("Verification error:", error);
+            toast.error(error.message || 'Subscription verification failed');
+            console.error('Verification error:', error);
           } finally {
             setLoading(false);
           }
         },
         modal: {
-          ondismiss: function () {
-            toast.error("Subscription cancelled");
+          ondismiss: function() {
+            toast.error('Subscription cancelled');
             setLoading(false);
-          },
-        },
+          }
+        }
       };
 
       const razorpayInstance = new window.Razorpay(options);
       razorpayInstance.open();
+
     } catch (error: any) {
-      console.error("Subscribe error:", error);
-      toast.error(error.message || "Failed to create subscription");
+      console.error('Subscribe error:', error);
+      toast.error(error.message || 'Failed to create subscription');
       setLoading(false);
     }
   };
@@ -325,9 +283,7 @@ export default function SubscriptionCheckout() {
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <p className="text-gray-500 mb-4">Product not found</p>
-            <Link to="/" className="text-purple-600 hover:underline">
-              ← Back to Home
-            </Link>
+            <Link to="/" className="text-purple-600 hover:underline">← Back to Home</Link>
           </div>
         </div>
         <Footer />
@@ -335,9 +291,8 @@ export default function SubscriptionCheckout() {
     );
   }
 
-  const subscriptionPrice =
-    product.finalPrice * (1 - (product.discountPercentage || 5) / 100);
-  const savings = product.finalPrice - subscriptionPrice;
+  const subscriptionPrice = product.final_price * (1 - (product.subscription_discount_percentage || 5) / 100);
+  const savings = product.final_price - subscriptionPrice;
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
@@ -347,10 +302,7 @@ export default function SubscriptionCheckout() {
       <div className="bg-white border-b">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center gap-2 text-sm text-gray-600">
-            <Link
-              to="/"
-              className="hover:text-gray-900 flex items-center gap-1"
-            >
+            <Link to="/" className="hover:text-gray-900 flex items-center gap-1">
               <Home size={16} /> Home
             </Link>
             <ChevronRight size={14} />
@@ -362,12 +314,9 @@ export default function SubscriptionCheckout() {
       </div>
 
       <div className="container mx-auto px-4 py-8 flex-1">
-        <h1 className="text-2xl md:text-3xl font-light mb-2">
-          Subscribe & Save
-        </h1>
+        <h1 className="text-2xl md:text-3xl font-light mb-2">Subscribe & Save</h1>
         <p className="text-gray-600 mb-8">
-          Get this product delivered automatically and save{" "}
-          {product.discountPercentage || 5}%
+          Get this product delivered automatically and save {product.subscription_discount_percentage || 5}%
         </p>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -407,28 +356,24 @@ export default function SubscriptionCheckout() {
                       onClick={() => setSelectedAddressId(address.id)}
                       className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
                         selectedAddressId === address.id
-                          ? "border-purple-600 bg-purple-50"
-                          : "border-gray-200 hover:border-purple-300"
+                          ? 'border-purple-600 bg-purple-50'
+                          : 'border-gray-200 hover:border-purple-300'
                       }`}
                     >
                       <div className="flex items-start gap-3">
-                        <div
-                          className={`mt-1 w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                            selectedAddressId === address.id
-                              ? "border-purple-600 bg-purple-600"
-                              : "border-gray-300"
-                          }`}
-                        >
+                        <div className={`mt-1 w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                          selectedAddressId === address.id
+                            ? 'border-purple-600 bg-purple-600'
+                            : 'border-gray-300'
+                        }`}>
                           {selectedAddressId === address.id && (
                             <Check size={14} className="text-white" />
                           )}
                         </div>
-
+                        
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
-                            <span className="font-semibold">
-                              {address.full_name}
-                            </span>
+                            <span className="font-semibold">{address.full_name}</span>
                             <span className="text-xs bg-gray-200 px-2 py-1 rounded">
                               {address.address_type}
                             </span>
@@ -438,13 +383,10 @@ export default function SubscriptionCheckout() {
                               </span>
                             )}
                           </div>
-                          <p className="text-sm text-gray-600">
-                            {address.phone}
-                          </p>
+                          <p className="text-sm text-gray-600">{address.phone}</p>
                           <p className="text-sm text-gray-700 mt-2">
                             {address.address_line1}
-                            {address.address_line2 &&
-                              `, ${address.address_line2}`}
+                            {address.address_line2 && `, ${address.address_line2}`}
                           </p>
                           <p className="text-sm text-gray-700">
                             {address.city}, {address.state} - {address.pincode}
@@ -467,9 +409,7 @@ export default function SubscriptionCheckout() {
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Billing Cycle:</span>
-                  <span className="font-medium capitalize">
-                    {billingCycle || "Monthly"}
-                  </span>
+                  <span className="font-medium capitalize">{billingCycle || 'Monthly'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Selected Size:</span>
@@ -483,16 +423,7 @@ export default function SubscriptionCheckout() {
                   <span className="text-gray-600">Next Billing:</span>
                   <span className="font-medium">
                     {new Date(
-                      Date.now() +
-                        (billingCycle === "monthly"
-                          ? 30
-                          : billingCycle === "quarterly"
-                            ? 90
-                            : 365) *
-                          24 *
-                          60 *
-                          60 *
-                          1000,
+                      Date.now() + ((billingCycle === 'monthly' ? 30 : billingCycle === 'quarterly' ? 90 : 365) * 24 * 60 * 60 * 1000)
                     ).toLocaleDateString()}
                   </span>
                 </div>
@@ -500,17 +431,15 @@ export default function SubscriptionCheckout() {
 
               <div className="mt-4 p-3 bg-green-50 rounded-lg">
                 <p className="text-sm text-green-800">
-                  <strong>You're saving ₹{savings.toFixed(0)}</strong> on every
-                  delivery! Cancel anytime with no penalties.
+                  <strong>You're saving ₹{savings.toFixed(0)}</strong> on every delivery! 
+                  Cancel anytime with no penalties.
                 </p>
               </div>
             </div>
 
             {/* Order Notes */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h2 className="text-lg font-semibold mb-4">
-                Delivery Instructions (Optional)
-              </h2>
+              <h2 className="text-lg font-semibold mb-4">Delivery Instructions (Optional)</h2>
               <textarea
                 value={customerNotes}
                 onChange={(e) => setCustomerNotes(e.target.value)}
@@ -524,24 +453,18 @@ export default function SubscriptionCheckout() {
           {/* Subscription Summary */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 sticky top-24">
-              <h2 className="text-lg font-semibold mb-4">
-                Subscription Summary
-              </h2>
+              <h2 className="text-lg font-semibold mb-4">Subscription Summary</h2>
 
               {/* Product */}
               <div className="flex gap-3 mb-4 pb-4 border-b">
                 <img
-                  src={product.mainImage || "https://via.placeholder.com/80"}
-                  alt={product.productName}
+                  src={product.main_image || 'https://via.placeholder.com/80'}
+                  alt={product.product_name}
                   className="w-20 h-20 object-cover rounded"
                 />
                 <div className="flex-1">
-                  <p className="font-medium line-clamp-2 text-sm">
-                    {product.productName}
-                  </p>
-                  <p className="text-gray-500 text-xs mt-1">
-                    Size: {selectedSize}
-                  </p>
+                  <p className="font-medium line-clamp-2 text-sm">{product.product_name}</p>
+                  <p className="text-gray-500 text-xs mt-1">Size: {selectedSize}</p>
                   <p className="text-purple-600 font-semibold mt-1">
                     ₹{subscriptionPrice.toFixed(0)}/delivery
                   </p>
@@ -552,15 +475,13 @@ export default function SubscriptionCheckout() {
               <div className="space-y-2 mb-4">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Regular Price</span>
-                  <span className="line-through">₹{product.finalPrice}</span>
+                  <span className="line-through">₹{product.final_price}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-green-600 font-medium">
-                    Subscription Discount ({product.discountPercentage || 5}%)
+                    Subscription Discount ({product.subscription_discount_percentage || 5}%)
                   </span>
-                  <span className="text-green-600 font-medium">
-                    -₹{savings.toFixed(0)}
-                  </span>
+                  <span className="text-green-600 font-medium">-₹{savings.toFixed(0)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Shipping</span>
@@ -572,17 +493,13 @@ export default function SubscriptionCheckout() {
                 </div>
                 <div className="border-t pt-2 flex justify-between items-center font-semibold text-lg">
                   <span>First Payment</span>
-                  <span className="text-purple-600">
-                    ₹{(subscriptionPrice * 1.05).toFixed(2)}
-                  </span>
+                  <span className="text-purple-600">₹{(subscriptionPrice * 1.05).toFixed(2)}</span>
                 </div>
               </div>
 
               <button
                 onClick={handleSubscribe}
-                disabled={
-                  loading || !selectedAddressId || addresses.length === 0
-                }
+                disabled={loading || !selectedAddressId || addresses.length === 0}
                 className="w-full bg-purple-700 text-white py-3 rounded-lg font-medium hover:bg-purple-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
               >
                 {loading ? (
