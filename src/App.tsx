@@ -19,6 +19,8 @@ import SignUp from "./pages/SignUp";
 import ProfilePage from "./pages/Profile";
 import CategoryProducts from "./pages/CategoryProducts";
 import OrderDetail from "./pages/OrderDetail";
+import SubscriptionCheckout from "./pages/SubscriptionCheckout";
+import MySubscriptions from "./pages/MySubscriptions";
 
 const queryClient = new QueryClient();
 
@@ -35,7 +37,7 @@ const App = () => (
         <Route path="/checkout" element={<Checkout />} />
         <Route path="/orders" element={<Orders />} />
         <Route path="/order/success/:orderId" element={<OrderSuccess />} />
-         <Route path="/order/detail/:orderId" element={<OrderDetail />} />
+        <Route path="/order/detail/:orderId" element={<OrderDetail />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/signin" element={<SignIn />} />
         <Route path="/signup" element={<SignUp />} />
@@ -43,6 +45,11 @@ const App = () => (
         <Route path="/order/detail/:orderId" element={<OrderDetail />} />
         <Route path="/product/:id" element={<ProductDetail />} />
         <Route path="/men" element={<ProductListing />} />
+        <Route
+          path="/subscription/checkout"
+          element={<SubscriptionCheckout />}
+        />
+        <Route path="/subscriptions" element={<MySubscriptions />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </TooltipProvider>

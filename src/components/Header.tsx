@@ -1,7 +1,13 @@
 // src/components/Header.tsx
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Heart, ShoppingCart, User as UserIcon, Search, ChevronDown } from "lucide-react";
+import {
+  Heart,
+  ShoppingCart,
+  User as UserIcon,
+  Search,
+  ChevronDown,
+} from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
 import { CartModal, WishlistModal } from "./CartWishlistModals";
@@ -13,7 +19,7 @@ function resolveProfileImage(img?: string | null): string | null {
   if (!img) return null;
   const trimmed = img.trim();
   if (!trimmed) return null;
-  
+
   if (/^https?:\/\//i.test(trimmed)) {
     const urlMatch = trimmed.match(/\/uploads\/.+$/);
     if (urlMatch) {
@@ -21,11 +27,11 @@ function resolveProfileImage(img?: string | null): string | null {
     }
     return trimmed;
   }
-  
+
   if (trimmed.startsWith("/")) {
     return `${API_BASE}${trimmed}`;
   }
-  
+
   return `${API_BASE}/uploads/${trimmed}`;
 }
 
@@ -35,7 +41,7 @@ export default function Header(): JSX.Element {
   const navigate = useNavigate();
   const [q, setQ] = useState<string>("");
   const [openMenu, setOpenMenu] = useState<boolean>(false);
-  
+
   // Modal states
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isWishlistOpen, setIsWishlistOpen] = useState(false);
@@ -43,14 +49,15 @@ export default function Header(): JSX.Element {
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
-      if (openMenu && !target.closest('.user-menu')) {
+      if (openMenu && !target.closest(".user-menu")) {
         setOpenMenu(false);
       }
     };
-    
+
     if (openMenu) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
+      document.addEventListener("mousedown", handleClickOutside);
+      return () =>
+        document.removeEventListener("mousedown", handleClickOutside);
     }
   }, [openMenu]);
 
@@ -61,7 +68,9 @@ export default function Header(): JSX.Element {
 
   const handleCartClick = () => {
     if (!isAuthenticated) {
-      navigate("/signin", { state: { from: { pathname: window.location.pathname } } });
+      navigate("/signin", {
+        state: { from: { pathname: window.location.pathname } },
+      });
       return;
     }
     setIsCartOpen(true);
@@ -69,7 +78,9 @@ export default function Header(): JSX.Element {
 
   const handleWishlistClick = () => {
     if (!isAuthenticated) {
-      navigate("/signin", { state: { from: { pathname: window.location.pathname } } });
+      navigate("/signin", {
+        state: { from: { pathname: window.location.pathname } },
+      });
       return;
     }
     setIsWishlistOpen(true);
@@ -88,7 +99,7 @@ export default function Header(): JSX.Element {
   }, [user]);
 
   const avatarInitial = displayName?.charAt(0)?.toUpperCase() ?? "U";
-  
+
   const profileImageUrl = React.useMemo(() => {
     if (!user) return null;
     return resolveProfileImage(user.profileImage);
@@ -96,7 +107,7 @@ export default function Header(): JSX.Element {
 
   const generateAvatarSvg = (initial: string): string => {
     const svg = encodeURIComponent(
-      `<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'><rect fill='#FDF6ED' width='100%' height='100%'/><text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' font-family='Inter, Arial' font-size='45' fill='#B87333'>${initial}</text></svg>`
+      `<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'><rect fill='#FDF6ED' width='100%' height='100%'/><text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' font-family='Inter, Arial' font-size='45' fill='#B87333'>${initial}</text></svg>`,
     );
     return `data:image/svg+xml;charset=UTF-8,${svg}`;
   };
@@ -108,10 +119,10 @@ export default function Header(): JSX.Element {
       <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-100 shadow-sm">
         <div className="container mx-auto flex items-center justify-between px-3 sm:px-4 md:px-6 h-16 sm:h-20 md:h-24">
           <Link to="/" aria-label="Velora Home" className="flex items-center">
-            <img 
-              src={Logo} 
-              alt="Velora" 
-              className="h-10 sm:h-14 md:h-16 lg:h-20 w-auto object-contain" 
+            <img
+              src={Logo}
+              alt="Velora"
+              className="h-10 sm:h-14 md:h-16 lg:h-20 w-auto object-contain"
             />
           </Link>
 
@@ -144,9 +155,9 @@ export default function Header(): JSX.Element {
               className="relative p-1.5 sm:p-2 rounded-full hover:bg-gray-50 transition-colors"
               title="Wishlist"
             >
-              <Heart 
-                size={20} 
-                className="sm:w-[22px] sm:h-[22px] text-red-500" 
+              <Heart
+                size={20}
+                className="sm:w-[22px] sm:h-[22px] text-red-500"
                 fill={wishlistCount > 0 ? "#EF4444" : "none"}
               />
               {wishlistCount > 0 && (
@@ -162,7 +173,10 @@ export default function Header(): JSX.Element {
               className="relative p-1.5 sm:p-2 rounded-full hover:bg-gray-50 transition-colors"
               title="Cart"
             >
-              <ShoppingCart size={20} className="sm:w-[22px] sm:h-[22px] text-gray-700" />
+              <ShoppingCart
+                size={20}
+                className="sm:w-[22px] sm:h-[22px] text-gray-700"
+              />
               {cartCount > 0 && (
                 <span className="absolute -top-1 -right-1 bg-purple-600 text-white text-[10px] sm:text-xs rounded-full px-1 sm:px-1.5 min-w-[16px] sm:min-w-[18px] h-4 sm:h-auto flex items-center justify-center">
                   {cartCount}
@@ -177,8 +191,8 @@ export default function Header(): JSX.Element {
                   className="flex items-center gap-1 sm:gap-2 px-1 sm:px-2 py-1 rounded hover:bg-gray-50 transition"
                 >
                   <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center border-2 border-amber-200">
-                    <img 
-                      src={avatarSrc} 
+                    <img
+                      src={avatarSrc}
                       alt={displayName || "User"}
                       className="w-full h-full object-cover"
                       onError={(e) => {
@@ -187,7 +201,10 @@ export default function Header(): JSX.Element {
                       }}
                     />
                   </div>
-                  <ChevronDown size={12} className="sm:w-[14px] sm:h-[14px] text-gray-500" />
+                  <ChevronDown
+                    size={12}
+                    className="sm:w-[14px] sm:h-[14px] text-gray-500"
+                  />
                 </button>
 
                 {openMenu && (
@@ -197,31 +214,37 @@ export default function Header(): JSX.Element {
                       <div className="text-xs text-gray-500">{user?.email}</div>
                     </div>
                     <hr className="my-1" />
-                    <Link 
-                      to="/profile" 
+                    <Link
+                      to="/profile"
                       className="block px-4 py-2 text-sm hover:bg-gray-50 transition-colors"
                       onClick={() => setOpenMenu(false)}
                     >
                       My Profile
                     </Link>
-                    <Link 
-                      to="/orders" 
+                    <Link
+                      to="/orders"
                       className="block px-4 py-2 text-sm hover:bg-gray-50 transition-colors"
                       onClick={() => setOpenMenu(false)}
                     >
                       Orders
                     </Link>
-                    <Link 
-                      to="/wishlist" 
+                    <Link
+                      to="/wishlist"
                       className="block px-4 py-2 text-sm hover:bg-gray-50 transition-colors"
                       onClick={() => setOpenMenu(false)}
                     >
                       Wishlist
                     </Link>
+                    <Link
+                      to="/subscriptions"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      My Subscriptions
+                    </Link>
                     <button
-                      onClick={() => { 
-                        signOut(); 
-                        setOpenMenu(false); 
+                      onClick={() => {
+                        signOut();
+                        setOpenMenu(false);
                       }}
                       className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
                     >
@@ -232,23 +255,26 @@ export default function Header(): JSX.Element {
               </div>
             ) : (
               <div className="flex items-center gap-1 sm:gap-2">
-                <Link 
-                  to="/signin" 
+                <Link
+                  to="/signin"
                   className="hidden sm:inline-block text-sm px-3 py-1 rounded-md hover:bg-gray-100 transition-colors"
                 >
                   Sign in
                 </Link>
-                <Link 
-                  to="/signup" 
+                <Link
+                  to="/signup"
                   className="hidden sm:inline-block text-sm px-3 py-1 rounded-md border border-amber-500 text-amber-600 font-medium hover:bg-amber-50 transition-colors"
                 >
                   Sign up
                 </Link>
-                <Link 
-                  to="/signin" 
+                <Link
+                  to="/signin"
                   className="sm:hidden p-1.5 sm:p-2 rounded-md hover:bg-gray-50"
                 >
-                  <UserIcon size={20} className="sm:w-[22px] sm:h-[22px] text-gray-700" />
+                  <UserIcon
+                    size={20}
+                    className="sm:w-[22px] sm:h-[22px] text-gray-700"
+                  />
                 </Link>
               </div>
             )}
@@ -258,7 +284,10 @@ export default function Header(): JSX.Element {
 
       {/* Modals */}
       <CartModal isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
-      <WishlistModal isOpen={isWishlistOpen} onClose={() => setIsWishlistOpen(false)} />
+      <WishlistModal
+        isOpen={isWishlistOpen}
+        onClose={() => setIsWishlistOpen(false)}
+      />
     </>
   );
 }
