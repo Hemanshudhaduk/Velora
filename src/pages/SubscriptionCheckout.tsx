@@ -127,6 +127,7 @@ export default function SubscriptionCheckout() {
       });
 
       const data = await response.json();
+      console.log('Addresses response:', data);
       
       if (data.success) {
         setAddresses(data.data.addresses);
