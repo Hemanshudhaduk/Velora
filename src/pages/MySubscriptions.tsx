@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate,Link } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   Package,
@@ -108,6 +108,7 @@ export default function MySubscriptions() {
         toast.success("Subscription cancelled successfully");
         fetchSubscriptions();
       } else {
+        // ✅ Show specific error message
         toast.error(data.message || "Failed to cancel subscription");
       }
     } catch (error) {
@@ -138,6 +139,7 @@ export default function MySubscriptions() {
         toast.success("Subscription paused successfully");
         fetchSubscriptions();
       } else {
+        // ✅ Show specific error message
         toast.error(data.message || "Failed to pause subscription");
       }
     } catch (error) {
@@ -168,6 +170,7 @@ export default function MySubscriptions() {
         toast.success("Subscription resumed successfully");
         fetchSubscriptions();
       } else {
+        // ✅ Show specific error message
         toast.error(data.message || "Failed to resume subscription");
       }
     } catch (error) {
@@ -330,6 +333,7 @@ export default function MySubscriptions() {
                       </div>
                     </div>
 
+                    {/* Action Buttons - FIXED */}
                     <div className="flex gap-3">
                       {sub.status === "active" && (
                         <>
@@ -380,9 +384,21 @@ export default function MySubscriptions() {
                       )}
 
                       {sub.status === "cancelled" && (
-                        <div className="text-sm text-gray-600">
-                          Cancelled on{" "}
+                        <div className="text-sm text-gray-600 bg-red-50 px-4 py-2 rounded-lg">
+                          ❌ Cancelled on{" "}
                           {new Date(sub.cancelled_at!).toLocaleDateString()}
+                        </div>
+                      )}
+
+                      {sub.status === "created" && (
+                        <div className="text-sm text-blue-600 bg-blue-50 px-4 py-2 rounded-lg">
+                          ⏳ Pending first payment
+                        </div>
+                      )}
+
+                      {sub.status === "halted" && (
+                        <div className="text-sm text-orange-600 bg-orange-50 px-4 py-2 rounded-lg">
+                          ⚠️ Payment failed - Please update payment method
                         </div>
                       )}
                     </div>
