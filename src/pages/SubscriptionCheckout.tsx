@@ -84,7 +84,7 @@ export default function SubscriptionCheckout() {
 
   const fetchProduct = async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/products/${productId}`);
+      const response = await fetch(`${API_BASE}/api/product/${productId}`);
       const data = await response.json();
       
       if (data.success) {
