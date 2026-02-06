@@ -354,7 +354,7 @@ export default function AddressModal({ isOpen, onClose, onSuccess, editAddress }
               Address Type
             </label>
             <div className="flex gap-4">
-              {['HOME', 'WORK', 'OTHER'].map(type => (
+              {["shipping", 'billing'].map(type => (
                 <label key={type} className="flex items-center cursor-pointer">
                   <input
                     type="radio"

@@ -146,7 +146,7 @@ export default function SubscriptionCheckout() {
       const data = await response.json();
       console.log("Addresses response:", data);
 
-      // ✅ SAFE extraction
+      
       const rawAddresses = data?.data?.addresses || [];
 
       if (!data.success || rawAddresses.length === 0) {
@@ -155,7 +155,7 @@ export default function SubscriptionCheckout() {
         return;
       }
 
-      // ✅ NORMALIZE backend → frontend
+      
       const normalizedAddresses: Address[] = rawAddresses.map((addr: any) => ({
         id: addr.id,
         full_name: addr.fullName,
@@ -172,7 +172,7 @@ export default function SubscriptionCheckout() {
 
       setAddresses(normalizedAddresses);
 
-      // ✅ AUTO SELECT LOGIC (works for 1 or many)
+      
       const defaultAddress = normalizedAddresses.find((a) => a.is_default);
 
       if (defaultAddress) {
